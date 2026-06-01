@@ -1,0 +1,2665 @@
+<style>
+html, body { height:90%; }
+body { margin:0; background:#f4f8fd; font-family:'Arial',sans-serif; height:90%; }
+.app-layout { display:flex; min-height:100vh; height:100vh; }
+
+/* --- Левая панель --- */
+.left-bar { width:22%; min-width:245px; background:#fff7e7; border-right:2.5px solid #fbc37c; padding:23px 12px 0 24px; box-sizing:border-box; display:flex; flex-direction:column; height:100vh; }
+.left-bar h2 { color:#f57c00; margin:0 0 10px 2px;}
+.order-add-btn { width:100%;margin-bottom:8px;padding:8px 0;border-radius:7px 7px 0 0; background:#fffbe8;border:2px solid #fbc37c;color:#f57c00;font-size:17px;font-weight:bold;cursor:pointer;}
+.order-list { flex:1 1 0; overflow-y: auto; min-height:160px; margin-bottom:12px; max-height:calc(100vh - 220px);}
+.order-item {padding:13px 7px 11px 15px; background:#fff; border-radius:8px; margin-bottom:10px; border-left:5px solid #fbc37c; cursor:pointer; transition:box-shadow 0.13s, border 0.13s; display:flex; flex-direction:column; gap:3px;}
+.order-item.active { border-left:6px solid #f57c00; box-shadow:0 2px 8px #fbc37c43;}
+.order-item .order-status {font-size:13px;font-weight:bold; }
+.order-item .order-status.novy   {color:#2196f3;}
+.order-item .order-status.v_rabote {color:#fd9800;}
+.order-item .order-status.oplachen {color:#16bd2c;}
+.order-item .order-status.izgotovlen {color:#315ac7;}
+.order-item .order-status.otgruzhen  {color:#b12cc2;}
+.order-actions { display:flex; gap:8px; margin-top:7px;}
+.order-actions button { background:#fff;border:1.7px solid #fbc37c;color:#f57c00;padding:8px 12px;border-radius:7px;font-size:15px;cursor:pointer;}
+.order-actions button:last-child {background:#ffeaea; color:#c33c3c;}
+
+/* --- Центр: структура --- */
+.center-rows-zone { display: flex; flex-direction: row; width: 90%; height: 100vh; }
+.center-zone {
+    flex:none;
+    width:1050px;
+    max-width: 900px;
+    min-width: 940px;
+    display: flex;
+    flex-direction: column;
+    background:#f4f8fd;
+    min-height:100vh;
+    box-sizing:border-box;
+}
+.tabs-bar {display:flex; gap:7px; margin:20px 0 20px 0;}
+.tab-btn {padding:10px 30px 10px 30px; font-size:18px;font-weight:bold; background:#fffde7;border:2px solid #fbc37c;color:#f57c00;border-radius:15px 15px 0 0; cursor:pointer;transition:background .14s,color .14s;}
+.tab-btn.active {background:#f57c00;color:#fff;}
+.tab-btn.tab-edit {font-size:15px;background:#fffbe7;color:#e68c18;}
+
+/* --- Верх: калькулятор и визуал --- */
+.top-zone {
+    display:flex;
+    flex-direction:row;
+    gap:22px;
+    padding: 0 12px;
+    height: 430px; /* !!! увеличить чтобы кнопка уместилась и не налезала на таблицу !!! */
+    align-items: flex-start;
+}
+
+/* --- Калькулятор --- */
+.calc-form {
+    width: 325px;
+    min-width: 260px;
+    max-width: 360px;
+    font-size:93%;
+    height:410px; /* чуть меньше, чем .top-zone */
+    max-height:410px;
+    overflow-y:auto;
+    background:#fff;
+    border-radius:14px;
+    padding:13px 14px 15px 15px;
+    box-shadow:0 2px 11px #e3be7742;
+    display: flex;
+    flex-direction: column;
+}
+.visual-col {
+  min-width:370px;
+  max-width:670px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  height:410px;
+}
+.visual-box {
+  /* ... */
+  width:99%;
+  height:98%;
+}
+#svgPreview {
+  width:100%;
+  height:100%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  /* Можете ограничить min-height, min-width если нужно */
+}
+
+.calc-step {
+    background: #f9f9fb;
+    border-radius: 14px;
+    margin-bottom: 19px;
+    padding: 16px 19px 14px 19px;
+    box-shadow: 0 1.5px 10px #fbc37c17;
+    font-size: 16px;
+    position: relative;
+    border: 1.6px solid #f2ede2;
+}
+
+.calc-step h3 {
+    margin: 0 0 8px 0;
+    font-size: 21px;
+    font-weight: bold;
+    color: #fa9900;
+    display: flex;
+    align-items: center;
+    letter-spacing: 0.3px;
+}
+
+.calc-step h3 .step-num {
+    display: inline-block;
+    font-size: 18px;
+    font-weight: bold;
+    background: #268af2;
+    color: #fff;
+    border-radius: 4px;
+    padding: 2px 7.5px 2px 7.5px;
+    margin-right: 9px;
+    letter-spacing: 0;
+    box-shadow: 0 2px 7px #268af210;
+}
+
+.calc-step select,
+.calc-step input[type="number"],
+.calc-step input[type="text"],
+.calc-step textarea {
+    margin-top: 4px;
+    border-radius: 7px;
+    border: 1.2px solid #ffbc54;
+    box-sizing: border-box;
+    padding: 8px 12px 8px 12px;
+    background: #fff;
+    font-size: 16px;
+    margin-bottom: 3px;
+    width: 100%;
+    max-width: 390px;
+    outline: none;
+    transition: border 0.14s;
+}
+.calc-step select:focus,
+.calc-step input:focus,
+.calc-step textarea:focus {
+    border-color: #fa9900;
+}
+
+/* --- Кнопка 'Добавить в заказ' --- */
+.calc-btn {
+  margin: 14px 0 0 0;
+  width: 100%;
+  background:#f57c00;
+  color:#fff;
+  padding: 15px 0 15px 0;
+  font-size:22px;
+  font-weight:bold;
+  border:none;
+  border-radius:12px;
+  cursor:pointer;
+  transition:background 0.18s;
+  display:block;
+  box-shadow: 0 2px 12px #fbc37c19;
+  letter-spacing: 0.5px;
+  text-shadow:0 1px 2px #ffffff20;
+  position: relative;
+}
+.calc-btn:active { background:#e68c18; }
+.calc-btn.add:before {
+  content: "+";
+  display:inline-block;
+  margin-right:14px;
+  font-size:26px;
+  vertical-align:middle;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 2px 8px #fbc37c50;
+  position:relative;
+  top:2px;
+}
+
+/* --- Визуал заказа --- */
+.visual-col {
+    flex:1 1 0;
+    min-width:370px;
+    max-width:670px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    height:410px;
+}
+.visual-box {
+    background:#fffdf6;
+    width:99%;
+    height:98%;
+    border-radius:18px;
+    box-shadow:0 2px 12px #fbc37c16;
+    display: flex;
+    flex-direction:column;
+    justify-content: center;
+    align-items:center;
+}
+.visual-title {font-size:21px;color:#f57c00;margin-bottom:14px;font-weight:bold;text-align:center;}
+.visual-scene {display:flex;justify-content:center;align-items:center;width:calc(100% - 30px);height:85%;}
+.visual-box svg {max-width:93%;max-height:92%;}
+
+/* --- Таблица заказа --- */
+.order-table-zone { padding:0 14px; margin-top:12px; margin-bottom:5px; }
+.order-table-wrapper {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: auto;
+    max-height: 330px;
+    overflow-y: auto;
+    background: #fff;
+    border-radius:10px;
+    box-shadow: 0 1px 8px #e3be773c;
+}
+.order-table {
+    min-width: 890px;
+    width: max-content;
+    background: #fff;
+    border-collapse: collapse;
+    margin-top: 0;
+}
+.order-table th, .order-table td {  border: 1.2px solid #fbc37c; padding: 7px 8px; font-size: 15px;}
+.order-table th { background: #ffefca; color: #e67d00;}
+.order-edit-btns {margin:14px 0 10px 0; display:flex;gap:15px;}
+.order-edit-btns button { background:#f57c00;color:#fff;font-weight:bold;font-size:16px;padding:11px 0;border:none;border-radius:8px;cursor:pointer;transition:background 0.17s; width:180px;}
+.order-edit-btns button:active {background:#e68c18;}
+.order-edit-btns .btn-blue {
+  background: #2176d5;
+  color: #fff;
+  font-weight: bold;
+  font-size: 16px;
+  padding: 11px 0;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 230px;
+  transition: background 0.2s;
+}
+.order-edit-btns .btn-blue:active { background:#185092; }
+
+.order-edit-btns .btn-green {
+  background: #07b053;
+  color: #fff;
+  font-weight: bold;
+  font-size: 16px;
+  padding: 11px 0;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 230px;
+  transition: background 0.2s;
+}
+.order-edit-btns .btn-green:active { background: #059040; }
+/* --- Правая панель --- */
+.client-bar {
+    width: 330px;
+    min-width: 270px;
+    background:#fff7e7;
+    border-left:2.5px solid #fbc37c;
+    padding:30px 18px 0 19px; box-sizing:border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+.client-title {font-size:25px;margin-bottom:8px;font-weight:bold;}
+.client-status {font-size:15px;margin-left:8px;font-weight:bold;vertical-align:middle;}
+.client-status.novy   {color:#2196f3;}
+.client-status.v_rabote {color:#fd9800;}
+.client-status.oplachen {color:#16bd2c;}
+.client-status.izgotovlen {color:#315ac7;}
+.client-status.otgruzhen  {color:#b12cc2;}
+.client-fields label { display:block;font-weight:bold;font-size:15px; margin-top:9px;}
+.client-fields input, .client-fields textarea { width:98%; border-radius:7px; border:1.4px solid #fbc37c;margin-top:4px;padding:9px; margin-bottom:9px; font-size:15px; background:#fff;}
+.client-fields input[readonly], .client-fields textarea[readonly] {background: #f3f3f3;color: #999;}
+.client-fields input:focus:not([readonly]), .client-fields textarea:focus:not([readonly]) { border-color:#f57c00;}
+.client-btns {margin-top:21px; display:flex;flex-direction:column;gap:10px;width:100%;}
+.client-btns button { background:#f57c00;color:#fff;font-weight:bold;font-size:18px;padding:15px 0;border:none;border-radius:9px;cursor:pointer;transition:background 0.16s;}
+.client-btns button.green { background:#029c56; }
+.client-btns button:active {background:#e68c18;}
+/* --- Модалки --- */
+.modal-bg { position:fixed;left:0;top:0;right:0;bottom:0;z-index:999;background:rgba(70,80,130,.19);}
+.modal-order, .modal-createorder { position:fixed; top:8vh; left:50%;transform:translateX(-50%); background:#fffdf6; min-width:370px; min-height:145px; padding:32px 29px 20px 29px; border-radius:18px; z-index:1050; box-shadow:0 10px 52px #fbc37c53; border:2px solid #fbc37c;}
+.modal-header {font-size:2rem; font-weight:bold; margin-bottom:16px;color:#f57c00;}
+.modal-btns {display:flex;gap:18px;margin-top:20px;}
+.modal-btns button {flex:1;min-width:110px;background:#f57c00;color:#fff;border-radius:8px;padding:13px 0;font-size:17px;font-weight:bold;border:none;cursor:pointer;}
+.modal-btns button.gray {background:#eee;color:#888;font-weight:normal;}
+.modal-btns button:active {background:#e68c18;}
+#svgPreview, .visual-scene {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%; height: 100%;
+  /* overflow: hidden; (если нужно) */
+}
+</style>
+<body>
+<div class="app-layout">
+    <!-- Левая панель -->
+    <div class="left-bar">
+        <h2>Заказы</h2>
+        <button class="order-add-btn" onclick="showCreateOrderModal()">+ Добавить заказ</button>
+        <input id="findOrder" type="text" placeholder="Поиск заказа/клиента">
+        <div class="order-list" id="ordersList"></div>
+        <div class="order-actions" style="margin-top:6px">
+          <button onclick="duplicateOrder()">Дублировать</button>
+          <button onclick="deleteOrder()">Удалить</button>
+        </div>
+    </div>
+  <div class="center-rows-zone">
+    <div class="center-zone">
+        <div class="tabs-bar">
+            <button id="tabRetail" class="tab-btn active" type="button" onclick="switchPriceType('retail')">Розница</button>
+            <button id="tabOpt" class="tab-btn" type="button" onclick="switchPriceType('opt')">Опт</button>
+            <button class="tab-btn tab-edit" type="button" onclick="openPriceModal()">✐ Редактировать прайс</button>
+        </div>
+        <div class="top-zone">
+          <form class="calc-form" id="calcForm">
+            <div class="calc-step"><h3>1️⃣ Выбор изделия:</h3>
+                <select id="prodType">
+                    <option value="door">Мягкая дверь</option>
+                    <option value="window">Мягкое окно</option>
+                </select>
+            </div>
+            <div class="calc-step"><h3>2️⃣ Материал окантовки:</h3>
+                <select id="matOk"><option>ПВХ</option><option>Oxford</option><option>Screen</option></select>
+            </div>
+            <div class="calc-step"><h3>3️⃣ Цвет окантовки:</h3>
+                <select id="color"><option>Белый</option><option>Бежевый</option><option>Коричневый</option><option>Серый</option><option>Чёрный</option></select>
+            </div>
+            <div class="calc-step"><h3>4️⃣ Стекло:</h3>
+                <select id="glass"><option>Прозрачное</option><option>Тонированное</option></select>
+            </div>
+            <div class="calc-step"><h3>5️⃣ Тип открывания:</h3>
+                <select id="openingType" onchange="autoCalculate()"></select>
+            </div>
+            <div class="calc-step"><h3>6️⃣ Доп. замки:</h3>
+                <select id="extraLock"><option>Нет</option><option>Поворотная скоба</option><option>Французский замок</option></select>
+                <input id="extraLockCount" type="number" placeholder="Количество замков" min="0">
+            </div>
+            <div class="calc-step"><h3>7️⃣ Доп. молния:</h3>
+                <select id="extraZipper"><option>Нет</option><option>Спиральная</option><option>Тракторная</option></select>
+                <input id="extraZipperLen" type="number" placeholder="Длина в см" min="0">
+            </div>
+            <div class="calc-step"><h3>8️⃣ Москитная сетка:</h3>
+                <select id="moskit"><option>Нет</option><option>Да</option></select>
+            </div>
+            <div class="calc-step"><h3>9️⃣ Юбка (карман):</h3>
+                <select id="pocket"><option>Нет</option><option>Да</option></select>
+            </div>
+            <div class="calc-step"><h3>🔟 Монтаж:</h3>
+                <select id="install"><option>Нет</option><option>Да</option></select>
+            </div>
+            <div class="calc-step"><h3>🔢 Дополнительные работы:</h3>
+                <input id="extraWorkPrice" type="number" placeholder="Стоимость, ₽" min="0">
+                <textarea id="extraWorkDesc" placeholder="Описание: сложность, доставка, подъём и др."></textarea>
+            </div>
+            <div class="calc-step"><h3>◻️ Высота (см):</h3>
+                <input id="height" type="number" placeholder="Введите высоту в см">
+            </div>
+            <div class="calc-step"><h3>◻️ Ширина (см):</h3>
+                <input id="width" type="number" placeholder="Введите ширину в см">
+            </div>
+			<div id="result" style="margin: 12px 0 16px 0;"></div>
+            <button class="calc-btn add" type="button" onclick="addToOrderTable()">Добавить в заказ</button>
+          </form>
+          <div class="visual-col">
+              <div class="visual-box">
+    <div class="visual-title">Визуализация заказа</div>
+    <div class="visual-scene" id="svgPreview" style="width:100%;height:100%;display:flex;justify-content:center;align-items:center;">
+        <!-- SVG ВИЗУАЛ будет вставляться сюда через JS! -->
+    </div>
+</div>
+          </div>
+        </div>
+        <div class="order-table-zone">
+          <div class="order-table-wrapper">
+            <table class="order-table" id="orderTable">
+              <thead>
+                <tr>
+                  <th>№</th>
+                  <th>Изделие</th>
+                  <th>Размер</th>
+                  <th>Материал</th>
+                  <th>Стекло</th>
+                  <th>Тип открывания</th>
+                  <th>Москитка</th>
+                  <th>Юбка</th>
+                  <th>Монтаж</th>
+                  <th>Доп. замки</th>
+                  <th>Кол-во замков</th>
+                  <th>Доп. молния</th>
+                  <th>Длина молнии (см)</th>
+                  <th>Материал (₽)</th>
+                  <th>Фурнитура (₽)</th>
+                  <th>Москитная сетка (₽)</th>
+                  <th>Юбка (₽)</th>
+                  <th>Доп. замки (₽)</th>
+                  <th>Доп. молния (₽)</th>
+                  <th>Тонировка (₽)</th>
+                  <th>Монтаж (₽)</th>
+                  <th>Доп. работы (₽)</th>
+                  <th>Описание доп. работ</th>
+                  <th>Цена</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="23" style="text-align: right;">Общая стоимость:</td>
+                  <td id="totalCost">0 ₽</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+         <div class="order-edit-btns">
+  <button type="button" onclick="editOrderTable()">Редактировать</button>
+  <button type="button" onclick="saveOrderTable()">Сохранить</button>
+  <button class="btn-blue" onclick="downloadOrderTxt()" type="button">Сохранить заказ в TXT</button>
+  <button class="btn-green" onclick="uploadTxtInput.click()" type="button">Загрузить заказ из TXT</button>
+  <input type="file" id="uploadTxtInput" accept=".txt" style="display:none" onchange="handleTxtUpload(event)">
+</div>
+        </div>
+    </div>
+    <div class="client-bar">
+        <div class="client-title" id="curOrderTitle">Заказ №10012 <span class="client-status novy" id="curOrderStatus">| Новый</span></div>
+        <div style="margin:9px 0 13px 0;font-weight:bold;color:#f57c00;font-size:18px;">Клиент</div>
+        <div class="client-fields">
+          <label>ФИО:</label><input id="fio" readonly value="Иванов Сергей" oninput="saveClientInfo()">
+          <label>Телефон:</label><input id="phone" readonly value="+7 900 000-00-01" oninput="saveClientInfo()">
+          <label>Адрес:</label><input id="addr" readonly value="г. Тверь, ул. Зеленая, 12" oninput="saveClientInfo()">
+          <label>Email:</label><input id="email" readonly value="test@mail.ru" oninput="saveClientInfo()">
+          <label>Трек-номер:</label><input id="track" readonly placeholder="Введите трек-номер для отгрузки" oninput="saveClientInfo()">
+          <label>Описание отгрузки/логистика:</label>
+          <textarea id="logistic" readonly placeholder="Курьер, ТК, самовывоз, срок, комментарий"></textarea>
+        </div>
+        <div class="client-btns" id="clientBtns">
+          <button id="btnEditClient" onclick="editClientFields()">Редактировать</button>
+          <button class="green" type="button" onclick="openOrderModal()">Оформить заказ</button>
+        </div>
+    </div>
+  </div>
+</div>
+
+<!-- Модальные окна -->
+<div id="createOrderModal" class="modal-bg" style="display:none;" onclick="closeCreateOrderModal(event)">
+  <div class="modal-createorder" onclick="event.stopPropagation();">
+    <div class="modal-header">Новый заказ</div>
+    <label>Имя заказа:</label>
+    <input id="inputOrderName" placeholder="Введите имя/ФИО заказа"><br>
+    <label>Номер заказа:</label>
+    <input id="inputOrderNum" type="number">
+    <div class="modal-btns">
+      <button onclick="saveCreateOrder()">Сохранить</button>
+      <button class="gray" type="button" onclick="closeCreateOrderModal(null)">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<div id="priceModal" class="modal-bg" style="display:none;" onclick="priceModalClose(event)">
+  <div class="modal-createorder" style="min-width:415px;max-width:540px" onclick="event.stopPropagation();">
+    <div class="modal-header">Редактировать прайс</div>
+    <div class="tabs-bar" style="margin-bottom:18px;">
+        <button id="priceTabRetail" class="tab-btn active" onclick="priceTabSwitch('retail')">Розница</button>
+        <button id="priceTabOpt" class="tab-btn" onclick="priceTabSwitch('opt')">Опт</button>
+    </div>
+    <div style="margin-bottom:17px;">
+      <label style="color:#f57c00;">ПВХ:</label>
+      <input id="price_pvh" type="number" style="width:90px;"><span style="margin-left:7px;">руб/м²</span><br>
+      <label style="color:#f57c00;">Oxford:</label>
+      <input id="price_oxf" type="number" style="width:90px;"><span style="margin-left:7px;">руб/м²</span><br>
+      <label style="color:#f57c00;">Screen:</label>
+      <input id="price_screen" type="number" style="width:90px;"><span style="margin-left:7px;">руб/м²</span><br>
+      <label style="color:#f57c00;">Москитная сетка:</label>
+      <input id="price_ms" type="number" style="width:90px;"><span style="margin-left:7px;">руб/м²</span><br>
+      <label style="color:#f57c00;">Юбка:</label>
+      <input id="price_pocket" type="number" style="width:90px;"><span style="margin-left:7px;">руб/м</span><br>
+      <label style="color:#f57c00;">Поворотная скоба:</label>
+      <input id="price_scoba" type="number" style="width:90px;"><span style="margin-left:7px;">руб/шт</span><br>
+      <label style="color:#f57c00;">Французский замок:</label>
+      <input id="price_france" type="number" style="width:90px;"><span style="margin-left:7px;">руб/шт</span><br>
+      <label style="color:#f57c00;">Спиральная молния:</label>
+      <input id="price_zip_spiral" type="number" style="width:90px;"><span style="margin-left:7px;">руб/м</span><br>
+      <label style="color:#f57c00;">Тракторная молния:</label>
+      <input id="price_zip_tractor" type="number" style="width:90px;"><span style="margin-left:7px;">руб/м</span><br>
+      <label style="color:#f57c00;">Тонировка (надбавка %):</label>
+      <input id="price_tint" type="number" style="width:60px;"><span style="margin-left:7px;">%</span><br>
+      <label style="color:#f57c00;">Монтаж:</label>
+      <input id="price_install" type="number" style="width:90px;"><span style="margin-left:7px;">руб/м²</span>
+    </div>
+    <div class="modal-btns">
+      <button style="font-size:17px;font-weight:bold;" onclick="savePrice()">Сохранить</button>
+      <button class="gray" style="background:#eee;color:#888;" onclick="priceModalClose(null)">Отмена</button>
+      <button style="background:#ffd3b0;color:#f57c00;font-weight:bold;" onclick="resetPricesToDefault()">Сбросить</button>
+    </div>
+  </div>
+</div>
+
+<div id="order-modal" class="modal-bg" style="display:none;" onclick="closeOrderModal(event)">
+  <div class="modal-order" onclick="event.stopPropagation();" style="max-width:600px;min-width:370px">
+    <div class="modal-header">Оформление заказа</div>
+    <div style="background:#fffbe8; border-radius:10px; box-shadow:0 1px 6px #ffbe5a18;padding:16px 18px 9px 18px; margin-bottom:22px;">
+      <div style="margin-bottom:6px;">
+        <b>Номер заказа:</b> <span id="modal-num" style="color:#f57c00;font-size:17px;">№-</span>
+      </div>
+      <div style="margin-bottom:6px;">
+        <b>Клиент:</b> <span id="modal-fio" style="color:#268ae4;font-size:16px;">-</span>
+      </div>
+      <div style="margin-bottom:6px;">
+        <b>Телефон:</b> <span id="modal-phone">-</span>
+      </div>
+      <div style="margin-bottom:6px;">
+        <b>Трек-номер:</b> <span id="modal-track" style="color:#f57c00;">-</span>
+      </div>
+      <div>
+        <b>Описание логистики:</b>
+        <div id="modal-logistic" style="margin-top:3px;background:#fff;border-radius:5px;padding:6px 9px;min-height:28px;color:#d96d00;font-size:14px;">-</div>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button style="font-size:18px;font-weight:bold;"><span style="font-size:19px;vertical-align:middle;">📄</span> Договор</button>
+      <button style="background:#ff9800;color:#fff;font-size:18px;font-weight:bold;"><span style="font-size:19px;vertical-align:middle;">🖨️</span> PDF визуализация</button>
+      <button style="background:#35c265;color:#fff;font-size:18px;font-weight:bold;"><span style="font-size:19px;vertical-align:middle;">🖼️</span> Для производства</button>
+      <button onclick="closeOrderModal()" style="background:#fedede;color:#b43434;font-weight:bold;font-size:18px;">Закрыть</button>
+    </div>
+  </div>
+</div>
+</body>
+<script>
+// === СПРАВОЧНИКИ, openingOptions, dynamicFields ===
+const RU = {
+  productType: {
+    door: "Мягкая дверь",
+    window: "Мягкое окно"
+  },
+  material: {
+    pvc: "ПВХ",
+    screen: "Скрин",
+    oxford: "Оксфорд"
+  },
+  color: {
+    white: "Белый",
+    brown: "Коричневый",
+    gray: "Серый",
+    beige: "Бежевый",
+    black: "Чёрный"
+  },
+  glass: {
+    transparent: "Прозрачное",
+    tinted: "Тонированное"
+  },
+  moskit: {
+    no: "Нет",
+    yes: "Да"
+  },
+  pocket: {
+    no: "Нет",
+    yes: "Да"
+  },
+  install: {
+    no: "Нет",
+    yes: "Да"
+  },
+  // для поля "Доп. замки"
+  extraLockType: {
+    none: "-",
+    rotary: "Поворотная скоба",
+    french: "Французский замок"
+  },
+  // для поля "Доп. молния"
+  extraZipperType: {
+    none: "-",
+    spiral: "Спиральная",
+    tractor: "Тракторная"
+  }
+};
+const openingOptions = {
+  door: [
+    "1 молния(спираль) по центру + люверсы 10 мм",
+    "1 молния(трактор) по центру + люверсы 10 мм",
+    "2 молнии(спираль) + люверсы 10 мм",
+    "2 молнии(трактор) + люверсы 10 мм"
+  ],
+  window: [
+    "Поворотные скобы (пластик)",
+    "Глухое (без открывания)",
+    "Французский замок (металл)",
+    "2 молнии(спираль) + французский замок (низ)",
+    "2 молнии(спираль) + поворотная скоба (низ)",
+    "2 молнии(трактор) + французский замок (низ)",
+    "2 молнии(трактор) + поворотная скоба (низ)"
+  ]
+};
+
+const dynamicFields = [
+  {key:"materialCost", label: "Материал (₽)"},
+  {key:"fittingsCost", label:"Фурнитура (₽)"},
+  {key:"moskitCost", label: "Москитная сетка (₽)"},
+  {key:"pocketCost", label: "Юбка (карман) (₽)"},
+  {key:"extraLockCost", label:"Доп. замки (₽)"},
+  {key:"extraZipperCost", label:"Доп. молния (₽)"},
+  {key:"glassSurcharge", label:"Наценка за тонированное стекло (₽)"},
+  {key:"installCost", label:"Монтаж (₽)"}
+];
+
+let orderItems = [];
+let priceType = 'retail';
+let isTableEditMode = false; // retail | opt
+
+const defaultPrices = {
+  retail: {
+    material_pvc: 1200, material_screen: 1600, material_oxford: 1400,
+    moskit: 800, pocket: 500,
+    extraLock_rotary: 100, extraLock_french: 150,
+    extraZipper_spiral: 400, extraZipper_tractor: 600,
+    glassTint: 5,
+    install: 350
+  },
+  opt: {
+    material_pvc: 950, material_screen: 1250, material_oxford: 1150,
+    moskit: 680, pocket: 380,
+    extraLock_rotary: 60, extraLock_french: 120,
+    extraZipper_spiral: 340, extraZipper_tractor: 540,
+    glassTint: 3,
+    install: 200
+  }
+};
+
+// ===== Справочная конвертация "код <-> русский" =====
+function getRu(type, value) {
+  if (RU[type] && RU[type][value] !== undefined) return RU[type][value];
+  return value;
+}
+function reverseRu(type, value) {
+  for (let k in RU[type]) if (RU[type][k] === value) return k;
+  return value;
+}
+
+// === Открывания ===
+function updateOpeningTypes() {
+  const productType = document.getElementById('prodType').value;
+  const openingTypeSelect = document.getElementById('openingType');
+  openingTypeSelect.innerHTML = '';
+  (openingOptions[productType]||[]).forEach(type => {
+    const option = document.createElement('option');
+    option.value = type; option.textContent = type;
+    openingTypeSelect.appendChild(option);
+  });
+}
+
+// --- автоматический запуск после загрузки, и на смену изделия:
+window.addEventListener('DOMContentLoaded', updateOpeningTypes);
+document.getElementById('prodType').addEventListener('change', updateOpeningTypes);
+// === Работа с прайс-листом из localStorage ===
+function getCurrentPrice() {
+  let all = JSON.parse(localStorage.getItem('pricesMulti'));
+  if (!all) all = {...defaultPrices};
+  let price = all[priceType] || defaultPrices[priceType];
+
+  return {
+    material: {
+      pvc: parseFloat(price.material_pvc) || 0,
+      screen: parseFloat(price.material_screen) || 0,
+      oxford: parseFloat(price.material_oxford) || 0
+    },
+    moskit: parseFloat(price.moskit) || 0,
+    pocket: parseFloat(price.pocket) || 0,
+    extraLock: {
+      rotary: parseFloat(price.extraLock_rotary) || 0,
+      french: parseFloat(price.extraLock_french) || 0
+    },
+    extraZipper: {
+      spiral: parseFloat(price.extraZipper_spiral) || 0,
+      tractor: parseFloat(price.extraZipper_tractor) || 0
+    },
+    glassTint: (parseFloat(price.glassTint) || 0) / 100,
+    install: parseFloat(price.install) || 0,
+
+    fittings: {
+      // ДВЕРИ
+      "1 молния(спираль) по центру + люверсы 10 мм": function(h, w) {
+        return h * (parseFloat(price.extraZipper_spiral) || 0);
+      },
+      "1 молния(трактор) по центру + люверсы 10 мм": function(h, w) {
+        return h * (parseFloat(price.extraZipper_tractor) || 0);
+      },
+      "2 молнии(спираль) + люверсы 10 мм": function(h, w) {
+        return 2 * h * (parseFloat(price.extraZipper_spiral) || 0);
+      },
+      "2 молнии(трактор) + люверсы 10 мм": function(h, w) {
+        return 2 * h * (parseFloat(price.extraZipper_tractor) || 0);
+      },
+      // ОКНА
+      "Поворотные скобы (пластик)": function(h, w) {
+        return ((2 * h + w) / 0.4) * (parseFloat(price.extraLock_rotary) || 0);
+      },
+      "Глухое (без открывания)": function(h, w) {
+        return 2 * (h + w) * (parseFloat(price.extraLock_rotary) || 0);
+      },
+      "Французский замок (металл)": function(h, w) {
+        return ((2 * h + w) / 0.4) * (parseFloat(price.extraLock_french) || 0);
+      },
+      "2 молнии(спираль) + французский замок (низ)": function(h, w) {
+        return 2 * h * (parseFloat(price.extraZipper_spiral) || 0)
+             + (w / 0.4) * (parseFloat(price.extraLock_french) || 0);
+      },
+      "2 молнии(спираль) + поворотная скоба (низ)": function(h, w) {
+        return 2 * h * (parseFloat(price.extraZipper_spiral) || 0)
+             + (w / 0.4) * (parseFloat(price.extraLock_rotary) || 0);
+      },
+      "2 молнии(трактор) + французский замок (низ)": function(h, w) {
+        return 2 * h * (parseFloat(price.extraZipper_tractor) || 0)
+             + (w / 0.4) * (parseFloat(price.extraLock_french) || 0);
+      },
+      "2 молнии(трактор) + поворотная скоба (низ)": function(h, w) {
+        return 2 * h * (parseFloat(price.extraZipper_tractor) || 0)
+             + (w / 0.4) * (parseFloat(price.extraLock_rotary) || 0);
+      }
+    }
+  };
+}
+
+// === Главная функция КАЛЬКУЛЯЦИИ стоимости ===
+function calculateCostsManual(o) {
+  const PRICE = getCurrentPrice();
+  const hM = o.height / 100;
+  const wM = o.width / 100;
+  const area = hM * wM;
+  let materialCost = (PRICE.material[o.material] || 0) * area;
+  let fittingsCost = 0;
+  const fit = PRICE.fittings;
+  if(fit[o.openingType]) {
+    fittingsCost = fit[o.openingType].length === 2 ? fit[o.openingType](hM, wM) : fit[o.openingType](hM);
+  }
+  let moskitCost = o.moskit === "yes" ? PRICE.moskit * area : 0;
+  let pocketCost = o.pocket === "yes" ? PRICE.pocket * wM : 0;
+  let extraLockCost = (o.extraLockType !== 'none') ? (o.extraLockCount||0) * PRICE.extraLock[o.extraLockType] : 0;
+  let extraZipperCost = (o.extraZipperType !== 'none') ? ((o.extraZipperLength||0)/100) * PRICE.extraZipper[o.extraZipperType] : 0;
+  let totalBeforeGlass = materialCost + fittingsCost + moskitCost + pocketCost + extraLockCost + extraZipperCost;
+  let glassSurcharge = o.glass === 'tinted' ? totalBeforeGlass * PRICE.glassTint : 0;
+  let installCost = o.install === "yes" ? PRICE.install * area : 0;
+  let finalTotal = totalBeforeGlass + glassSurcharge + installCost + (o.extraWorkPrice||0);
+  return { materialCost, fittingsCost, moskitCost, pocketCost, extraLockCost, extraZipperCost, glassSurcharge, installCost, finalTotal };
+}
+
+function calculateCosts() {
+  const PRICE = getCurrentPrice();
+  const height = parseFloat(document.getElementById('height').value);
+  const width = parseFloat(document.getElementById('width').value);
+  const materialLabel = document.getElementById("matOk").value;
+  const material = materialLabel === "ПВХ" ? "pvc" : (materialLabel === "Oxford" ? "oxford" : "screen");
+  const openingType = document.getElementById("openingType").value;
+  const moskit = document.getElementById('moskit').value;
+  const pocket = document.getElementById('pocket').value === "Да" ? "yes" : "no";
+  const glass = document.getElementById('glass').value === "Тонированное" ? "tinted" : "transparent";
+  const extraLockLabel = document.getElementById('extraLock').value;
+  const extraLockType = extraLockLabel === "Нет" ? "none" : (extraLockLabel === "Поворотная скоба" ? "rotary" : "french");
+  const extraLockCount = parseInt(document.getElementById('extraLockCount').value) || 0;
+  const extraZipperLabel = document.getElementById('extraZipper').value;
+  const extraZipperType = extraZipperLabel === "Нет" ? "none" : (extraZipperLabel === "Спиральная" ? "spiral" : "tractor");
+  const extraZipperLength = parseFloat(document.getElementById('extraZipperLen').value) || 0;
+  const install = document.getElementById('install').value === "Да" ? "yes" : "no";
+  const extraWorkPrice = parseFloat(document.getElementById('extraWorkPrice').value) || 0;
+  if (!height || !width || height <= 0 || width <= 0) return null;
+  const hM = height / 100; const wM = width / 100; const area = hM * wM;
+  let materialCost = (PRICE.material[material] || 0) * area;
+  let fittingsCost = 0;
+  const fit = PRICE.fittings;
+  if(fit[openingType]) {
+    fittingsCost = fit[openingType].length === 2 ? fit[openingType](hM, wM) : fit[openingType](hM);
+  }
+  let moskitCost = moskit === "yes" ? PRICE.moskit * area : 0;
+  let pocketCost = pocket === "yes" ? PRICE.pocket * wM : 0;
+  let extraLockCost = (extraLockType !== 'none') ? extraLockCount * PRICE.extraLock[extraLockType] : 0;
+  let extraZipperCost = (extraZipperType !== 'none') ? (extraZipperLength / 100) * PRICE.extraZipper[extraZipperType] : 0;
+  const totalBeforeGlass = materialCost + fittingsCost + moskitCost + pocketCost + extraLockCost + extraZipperCost;
+  let glassSurcharge = glass === 'tinted' ? totalBeforeGlass * PRICE.glassTint : 0;
+  let installCost = install === "yes" ? PRICE.install * area : 0;
+  let finalTotal = totalBeforeGlass + glassSurcharge + installCost + extraWorkPrice;
+  return {
+    height, width, materialCost, fittingsCost, moskitCost, pocketCost,
+    extraLockCost, extraZipperCost, glassSurcharge, installCost,
+    extraWorkPrice, finalTotal
+  };
+}
+
+// === Автоматический расчет с выводом в HTML ===
+function calculate(showAlert = true) {
+  const costs = calculateCosts();
+  if (!costs) { if(showAlert) alert("Введите корректные размеры для расчета!"); return; }
+  let resultHtml = `<h2>Итоговая стоимость:</h2>`;
+  if(costs.materialCost > 0) resultHtml += `<p><strong>Материал:</strong> ${costs.materialCost.toFixed(2)} ₽</p>`;
+  if(costs.fittingsCost > 0) resultHtml += `<p><strong>Фурнитура:</strong> ${costs.fittingsCost.toFixed(2)} ₽</p>`;
+  if(costs.moskitCost > 0) resultHtml += `<p><strong>Москитная сетка:</strong> ${costs.moskitCost.toFixed(2)} ₽</p>`;
+  if(costs.pocketCost > 0) resultHtml += `<p><strong>Юбка (карман):</strong> ${costs.pocketCost.toFixed(2)} ₽</p>`;
+  if(costs.extraLockCost > 0) resultHtml += `<p><strong>Доп. замки:</strong> ${costs.extraLockCost.toFixed(2)} ₽</p>`;
+  if(costs.extraZipperCost > 0) resultHtml += `<p><strong>Доп. молния:</strong> ${costs.extraZipperCost.toFixed(2)} ₽</p>`;
+  if(costs.glassSurcharge > 0) resultHtml += `<p><strong>Наценка за тонированное стекло:</strong> +${costs.glassSurcharge.toFixed(2)} ₽</p>`;
+  if(costs.installCost > 0) resultHtml += `<p><strong>Монтаж:</strong> ${costs.installCost.toFixed(2)} ₽</p>`;
+  if(costs.extraWorkPrice > 0) resultHtml += `<p><strong>Доп. работы:</strong> ${costs.extraWorkPrice.toFixed(2)} ₽</p>`;
+  resultHtml += `<p><strong>Общая стоимость:</strong> ${costs.finalTotal.toFixed(2)} ₽</p>`;
+  document.getElementById('result').innerHTML = resultHtml;
+}
+function autoCalculate() { calculate(false); }
+
+
+// === Добавление позиции в заказ ===
+function addToOrderTable() {
+  let prodType = document.getElementById("prodType").value;
+  let matSel   = document.getElementById("matOk").value;
+  let colorSel = document.getElementById("color").value;
+  let glass = document.getElementById("glass").value === "Тонированное" ? "tinted" : "transparent";
+  let opening = document.getElementById("openingType").value;
+  let moskit = document.getElementById("moskit").value === "Да" ? "yes" : "no";
+  let pocket = document.getElementById("pocket").value === "Да" ? "yes" : "no";
+  let install = document.getElementById("install").value === "Да" ? "yes" : "no";
+  let extraLockType = document.getElementById("extraLock").value;
+  extraLockType = extraLockType === "Нет" ? "none" : (extraLockType === "Поворотная скоба" ? "rotary" : "french");
+  let extraLockCount = Number(document.getElementById("extraLockCount").value) || 0;
+  let extraZipperType = document.getElementById("extraZipper").value;
+  extraZipperType = extraZipperType === "Нет" ? "none" : (extraZipperType === "Спиральная" ? "spiral" : "tractor");
+  let extraZipperLen = Number(document.getElementById("extraZipperLen").value) || 0;
+  let extraWorkPrice = Number(document.getElementById("extraWorkPrice").value) || 0;
+  let extraWorkDesc = document.getElementById("extraWorkDesc").value || '';
+  let height = Number(document.getElementById("height").value) || 0;
+  let width  = Number(document.getElementById("width").value) || 0;
+  let size   = (height && width) ? `${height}×${width}` : "";
+
+  if (!prodType || !matSel || !colorSel || !opening || !height || !width) {
+    alert("Заполните все необходимые параметры для добавления!");
+    return;
+  }
+
+  // английский код!
+  let row = {
+    prodType,
+    size,
+    mat: reverseRu('material', matSel),
+    color: reverseRu('color', colorSel),
+    glass,
+    opening,
+    moskit,
+    pocket,
+    install,
+    extraLockType: (extraLockType !== "none" ? extraLockType : undefined),
+    extraLockCount: (extraLockCount > 0 ? extraLockCount : undefined),
+    extraZipperType: (extraZipperType !== "none" ? extraZipperType : undefined),
+    extraZipperLen: (extraZipperLen > 0 ? extraZipperLen : undefined),
+    extraWorkDesc: (extraWorkDesc && extraWorkDesc.trim() ? extraWorkDesc : undefined)
+  };
+
+  let calcObj = {
+    material: row.mat,
+    height, width,
+    openingType: opening,
+    moskit, pocket, install,
+    extraLockType, extraLockCount,
+    extraZipperType, extraZipperLength: extraZipperLen,
+    glass, extraWorkPrice
+  };
+  let result = calculateCostsManual(calcObj);
+
+  if (result) {
+    for (let key in result) {
+      if (key === "finalTotal") continue;
+      if (typeof result[key] === "number" && result[key] !== 0 && !isNaN(result[key])) {
+        row[key] = +result[key].toFixed(2);
+      }
+    }
+    if (result.finalTotal && !isNaN(result.finalTotal)) row.price = Math.round(result.finalTotal);
+  }
+
+  Object.keys(row).forEach(key => { if (row[key] === undefined) delete row[key]; });
+
+  let cur = getCurrentOrder();
+  if (!cur) return;
+  if (!cur.table) cur.table = [];
+  cur.table.push(row);
+  saveOrders();
+  renderOrderTable();
+}
+function editOrderTable() {
+  isTableEditMode = true;
+  renderOrderTable();
+}
+function saveOrderTable() {
+  if (!isTableEditMode) return;
+  const cur = getCurrentOrder();
+  if (!cur || !cur.table) return;
+  const tb = document.querySelector("#orderTable tbody");
+  const rows = tb.querySelectorAll('tr');
+  // Массив КЛЮЧЕЙ, тот же порядок, что в renderOrderTable!
+  const fields = [
+    "prodType", "size", "mat", "color", "glass", "opening", "moskit", "pocket", "install",
+    "extraLockType", "extraLockCount", "extraZipperType", "extraZipperLen", "materialCost", "fittingsCost",
+    "moskitCost", "pocketCost", "extraLockCost", "extraZipperCost", "glassSurcharge", "installCost",
+    "extraWorkPrice", "extraWorkDesc", "price"
+  ];
+
+  let newTable = [];
+  rows.forEach(tr => {
+    let tds = tr.querySelectorAll("td");
+    let obj = {};
+    fields.forEach((key, idx) => {
+      let td = tds[idx+1];
+      if (!td) return;
+      let input = td.querySelector('input,select,textarea');
+      if (input) {
+        let v = input.value;
+        // Если поле справочное — возврат кода на англ.
+        if(["prodType","mat","color","glass","moskit","pocket","install","extraLockType","extraZipperType"].includes(key)) {
+          // mat нужен special case
+          v = reverseRu(key === "mat" ? "material" : key, v);
+        }
+        if (/_?Cost|price|Count|Len/.test(key)) v = v.replace(/[^\d\.,-]/g,'').replace(',','.');
+        if (/_?Cost|price|Count|Len/.test(key) && v!=="") v = parseFloat(v);
+        obj[key] = v;
+      }
+    });
+
+    // Пересчитываем стоимость (использует коды!)
+    let h = 0, w = 0;
+    if (obj.size && obj.size.includes("×")) {
+      let arr = obj.size.replace(/ /g,'').split("×");
+      h = parseFloat(arr[0]);
+      w = parseFloat(arr[1]);
+    }
+    let calcObj = {
+      material: obj.mat,
+      height: h, width: w,
+      openingType: obj.opening,
+      moskit: obj.moskit,
+      pocket: obj.pocket,
+      install: obj.install,
+      extraLockType: obj.extraLockType,
+      extraLockCount: Number(obj.extraLockCount)||0,
+      extraZipperType: obj.extraZipperType,
+      extraZipperLength: Number(obj.extraZipperLen)||0,
+      glass: obj.glass,
+      extraWorkPrice: Number(obj.extraWorkPrice)||0
+    };
+    let res = calculateCostsManual(calcObj);
+    if (res) {
+      obj.materialCost    = res.materialCost;
+      obj.fittingsCost    = res.fittingsCost;
+      obj.moskitCost      = res.moskitCost;
+      obj.pocketCost      = res.pocketCost;
+      obj.extraLockCost   = res.extraLockCost;
+      obj.extraZipperCost = res.extraZipperCost;
+      obj.glassSurcharge  = res.glassSurcharge;
+      obj.installCost     = res.installCost;
+      obj.price           = Math.round(res.finalTotal);
+    }
+    // Очистим пустые значения
+    Object.keys(obj).forEach(k => {
+      if (typeof obj[k]==="string" && obj[k].trim()==="") delete obj[k];
+      if (typeof obj[k]==="number" && isNaN(obj[k])) delete obj[k];
+    });
+    newTable.push(obj);
+  });
+
+  cur.table = newTable;
+  saveOrders();
+  isTableEditMode = false;
+  renderOrderTable();
+}
+
+
+function renderOrderTable() {
+    let cur = getCurrentOrder();
+    let tb = document.querySelector("#orderTable tbody");
+    let thead = document.querySelector("#orderTable thead tr");
+    tb.innerHTML = "";
+    if (!cur || !cur.table || !cur.table.length) return;
+
+    // Определяем порядок/ключи для всей таблицы
+    const fields = [
+      { label: "Изделие",           key: "prodType" },
+      { label: "Размер",            key: "size" },
+      { label: "Материал",          key: "mat" },
+      { label: "Цвет окантовки",    key: "color" },
+      { label: "Стекло",            key: "glass" },
+      { label: "Тип открывания",    key: "opening" },
+      { label: "Москитка",          key: "moskit" },
+      { label: "Юбка",              key: "pocket" },
+      { label: "Монтаж",            key: "install" },
+      { label: "Доп. замки",        key: "extraLockType" },
+      { label: "Кол-во замков",     key: "extraLockCount" },
+      { label: "Доп. молния",       key: "extraZipperType" },
+      { label: "Длина молнии (см)", key: "extraZipperLen" },
+      { label: "Материал (₽)",      key: "materialCost" },
+      { label: "Фурнитура (₽)",     key: "fittingsCost" },
+      { label: "Москитная сетка (₽)", key: "moskitCost" },
+      { label: "Юбка (₽)",          key: "pocketCost" },
+      { label: "Доп. замки (₽)",    key: "extraLockCost" },
+      { label: "Доп. молния (₽)",   key: "extraZipperCost" },
+      { label: "Тонировка (₽)",     key: "glassSurcharge" },
+      { label: "Монтаж (₽)",        key: "installCost" },
+      { label: "Доп. работы (₽)",   key: "extraWorkPrice" },
+      { label: "Описание доп. работ", key: "extraWorkDesc" },
+      { label: "Цена",               key: "price" }
+    ];
+
+    if (thead) thead.innerHTML = `<th>№</th>${fields.map(f => `<th>${f.label}</th>`).join('')}`;
+
+    // --- EDIT mode: построение строк с инпутами и live обновлением ------------------------
+    if (isTableEditMode) {
+        cur.table.forEach((t, i) => {
+            tb.innerHTML += `<tr>
+                <td>${i + 1}</td>
+                ${fields.map(f => {
+                    let val = t[f.key] ?? "";
+                    // Ниже блок для каждого типа поля:
+                    if (f.key === "prodType") {
+                        return `<td>
+                            <select>
+                                <option value="door"${val === "door" ? ' selected' : ''}>Мягкая дверь</option>
+                                <option value="window"${val === "window" ? ' selected' : ''}>Мягкое окно</option>
+                            </select>
+                        </td>`;
+                    }
+                    if (f.key === "mat") {
+                        return `<td>
+                            <select>
+                                <option value="pvc"${val === "pvc" ? ' selected' : ''}>ПВХ</option>
+                                <option value="oxford"${val === "oxford" ? ' selected' : ''}>Оксфорд</option>
+                                <option value="screen"${val === "screen" ? ' selected' : ''}>Скрин</option>
+                            </select>
+                        </td>`;
+                    }
+                    if (f.key === "color") {
+                        return `<td>
+                            <select>
+                                <option value="white"${val === "white" ? ' selected' : ''}>Белый</option>
+                                <option value="beige"${val === "beige" ? ' selected' : ''}>Бежевый</option>
+                                <option value="brown"${val === "brown" ? ' selected' : ''}>Коричневый</option>
+                                <option value="gray"${val === "gray" ? ' selected' : ''}>Серый</option>
+                                <option value="black"${val === "black" ? ' selected' : ''}>Чёрный</option>
+                            </select>
+                        </td>`;
+                    }
+                    if (f.key === "glass") {
+                        return `<td>
+                            <select>
+                                <option value="transparent"${val === "transparent" ? ' selected' : ''}>Прозрачное</option>
+                                <option value="tinted"${val === "tinted" ? ' selected' : ''}>Тонированное</option>
+                            </select>
+                        </td>`;
+                    }
+                    if (f.key === "opening") {
+                        let prodType = t.prodType || "door";
+                        let arr = (openingOptions[prodType] || []);
+                        return `<td>
+                            <select>
+                                ${arr.map(opt => `<option value="${opt}"${val === opt ? ' selected' : ''}>${opt}</option>`).join('')}
+                            </select>
+                        </td>`;
+                    }
+                    if (["moskit", "pocket", "install"].includes(f.key)) {
+                        return `<td>
+                            <select>
+                                <option value="yes"${val === "yes" ? ' selected' : ''}>Да</option>
+                                <option value="no"${val === "no" ? ' selected' : ''}>Нет</option>
+                            </select>
+                        </td>`;
+                    }
+                    if (f.key === "extraLockType") {
+                        return `<td>
+                            <select>
+                                <option value="none"${val === "none" ? ' selected' : ''}>-</option>
+                                <option value="rotary"${val === "rotary" ? ' selected' : ''}>Поворотная скоба</option>
+                                <option value="french"${val === "french" ? ' selected' : ''}>Французский замок</option>
+                            </select>
+                        </td>`;
+                    }
+                    if (f.key === "extraZipperType") {
+                        return `<td>
+                            <select>
+                                <option value="none"${val === "none" ? ' selected' : ''}>-</option>
+                                <option value="spiral"${val === "spiral" ? ' selected' : ''}>Спиральная</option>
+                                <option value="tractor"${val === "tractor" ? ' selected' : ''}>Тракторная</option>
+                            </select>
+                        </td>`;
+                    }
+                    if (/_?Cost|price|Count|Len/.test(f.key)) {
+                        // INPUT для стоимости/длины/цены
+                        return `<td><input type="number" value="${val !== undefined && val !== null && val !== "" ? val : ""}"></td>`;
+                    }
+                    if (f.key === "extraWorkDesc") {
+                        return `<td><textarea>${val || ""}</textarea></td>`;
+                    }
+                    // default — обычный input
+                    return `<td><input type="text" value="${val || ""}"></td>`;
+                }).join("")}
+            </tr>`;
+        });
+
+        // LIVE пересчёт + первичная инициализация стоимостей
+        setTimeout(() => {
+            // 1. Навесить обработчики на все input/select/textarea ячейки в каждой строке
+            tb.querySelectorAll('tr').forEach(tr => {
+                tr.querySelectorAll('input,select,textarea').forEach(input => {
+                    input.oninput = input.onchange = function() {
+                        updateRowPriceFromInputs(tr);
+                    };
+                });
+            });
+            // 2. Пересчитать все строки после отрисовки (цена и сумма появятся сразу!)
+            tb.querySelectorAll('tr').forEach(tr => updateRowPriceFromInputs(tr));
+        }, 0);
+
+        return;
+    }
+    // ---- ПРОСМОТР (не-редактируемый режим, всё на русском) ----
+    let total = 0;
+    cur.table.forEach((t, i) => {
+        tb.innerHTML += `<tr><td>${i + 1}</td>${
+            fields.map(f => {
+                let val = t[f.key];
+                if (f.key === "prodType")    val = getRu("productType", val);
+                if (f.key === "mat")         val = getRu("material", val);
+                if (f.key === "color")       val = getRu("color", val);
+                if (f.key === "glass")       val = getRu("glass", val);
+                if (f.key === "moskit")      val = getRu("moskit", val);
+                if (f.key === "pocket")      val = getRu("pocket", val);
+                if (f.key === "install")     val = getRu("install", val);
+                if (f.key === "extraLockType")    val = getRu("extraLockType", val);
+                if (f.key === "extraZipperType")  val = getRu("extraZipperType", val);
+
+                if ((val === 0 || val === "0" || val === null || val === undefined) && !/price|size|prodType/i.test(f.key))
+                    return `<td></td>`;
+                if (typeof val === "number" && /Cost|price/.test(f.key)) val = val ? Number(val).toFixed(2) + " ₽" : "";
+                return `<td>${val == null ? "" : val}</td>`;
+            }).join("")
+        }</tr>`;
+        if (t.price) total += +t.price;
+    });
+    let tf = document.getElementById('totalCost');
+    if (tf) tf.textContent = total.toFixed(2) + ' ₽';
+}
+function updateTotalOrderSum() {
+    let tb = document.querySelector("#orderTable tbody");
+    let rows = tb.querySelectorAll('tr');
+    let sum = 0;
+    rows.forEach(tr => {
+        let tds = tr.querySelectorAll('td');
+        // Цена всегда последний столбец, ищем input
+        let priceTd = tds[23];
+        if (priceTd) {
+            let input = priceTd.querySelector('input');
+            let val = input ? parseFloat(input.value.replace(/[^\d\.]/g, '')) : parseFloat(priceTd.textContent.replace(/[^\d\.]/g, ''));
+            if (!isNaN(val)) sum += val;
+        }
+    });
+    let tf = document.getElementById('totalCost');
+    if (tf) tf.textContent = sum.toFixed(2) + ' ₽';
+}
+
+// функция пересоздания select'a типа открывания для нужной строки
+function updateOpeningTypeDropdown(tr, prodType, openingValue) {
+  const openingCell = tr.querySelectorAll('td')[5+1]; // td для "Тип открывания"
+  let arr = openingOptions[prodType]||[];
+  // новый select
+  let select = document.createElement('select');
+  arr.forEach(opt => {
+    let o = document.createElement('option');
+    o.value = opt;
+    o.textContent = opt;
+    if (opt===openingValue) o.selected = true;
+    select.appendChild(o);
+  });
+  openingCell.innerHTML = '';
+  openingCell.appendChild(select);
+  select.onchange = function() {
+    updateRowPriceFromInputs(tr);
+  };
+}
+setTimeout(() => {
+  tb.querySelectorAll('tr').forEach((tr, rowIdx) => {
+    tr.querySelectorAll('input,select,textarea').forEach((input, inputIdx) => {
+      input.onchange = function() {
+        // если меняется изделие, меняем выпадающий "тип открывания":
+        if (fields[inputIdx].key === "prodType") {
+          let prodType = input.value;
+          // Найди текущее значение типа открывания:
+          let openingValue = tr.querySelectorAll('td')[6].querySelector('select')?.value || "";
+          updateOpeningTypeDropdown(tr, prodType, openingValue);
+        }
+        updateRowPriceFromInputs(tr);
+      };
+    });
+  });
+}, 0);
+
+function updateRowPriceFromInputs(tr, rowIdx) {
+    // Точный порядок полей для работы с input в таблице!
+    const fields = [
+        "prodType", "size", "mat", "color", "glass", "opening", "moskit", "pocket", "install",
+        "extraLockType", "extraLockCount", "extraZipperType", "extraZipperLen", "materialCost", "fittingsCost",
+        "moskitCost", "pocketCost", "extraLockCost", "extraZipperCost", "glassSurcharge", "installCost",
+        "extraWorkPrice", "extraWorkDesc", "price"
+    ];
+    const tds = tr.querySelectorAll('td');
+    let rowData = {};
+    fields.forEach((key, idx) => {
+        let td = tds[idx + 1];
+        if (!td) return;
+        let input = td.querySelector('input,select,textarea');
+        if (input) {
+            let v = input.value;
+            if (/_?Cost|price|Count|Len/.test(key)) v = v.replace(/[^\d\.,-]/g, '').replace(',', '.');
+            if (/_?Cost|price|Count|Len/.test(key) && v !== "") v = parseFloat(v);
+            // Для справочных полей используем коды (EN):
+            if (["prodType","mat","color","glass","moskit","pocket","install","extraLockType","extraZipperType"].includes(key)) {
+                v = reverseRu(key === "mat" ? "material" : key, v);
+            }
+            rowData[key] = v;
+        }
+    });
+
+    // Извлекаем размер
+    let h = 0, w = 0;
+    if (rowData.size && rowData.size.includes("×")) {
+        let arr = rowData.size.replace(/ /g, '').split("×");
+        h = parseFloat(arr[0]);
+        w = parseFloat(arr[1]);
+    }
+
+    // Калькуляция для строки
+    let calcObj = {
+        material: rowData.mat,
+        height: h, width: w,
+        openingType: rowData.opening,
+        moskit: rowData.moskit,
+        pocket: rowData.pocket,
+        install: rowData.install,
+        extraLockType: rowData.extraLockType,
+        extraLockCount: Number(rowData.extraLockCount) || 0,
+        extraZipperType: rowData.extraZipperType,
+        extraZipperLength: Number(rowData.extraZipperLen) || 0,
+        glass: rowData.glass,
+        extraWorkPrice: Number(rowData.extraWorkPrice) || 0
+    };
+
+    let res = calculateCostsManual(calcObj);
+
+    if (res && res.finalTotal) {
+        // Обнови значения в input-ах прямо в строке (реактивно)
+        const fill = (index, value, digits = 2) => {
+            if (tds[index] && tds[index].querySelector('input')) {
+                tds[index].querySelector('input').value = Number(value).toFixed(digits);
+            }
+        };
+        fill(13, res.materialCost);
+        fill(14, res.fittingsCost);
+        fill(15, res.moskitCost);
+        fill(16, res.pocketCost);
+        fill(17, res.extraLockCost);
+        fill(18, res.extraZipperCost);
+        fill(19, res.glassSurcharge);
+        fill(20, res.installCost);
+        fill(21, res.extraWorkPrice, 2);
+        if (tds[23] && tds[23].querySelector('input')) {
+            tds[23].querySelector('input').value = Math.round(res.finalTotal);
+        }
+    }
+    // Пересчитать итоговую сумму заказа всегда!
+    updateTotalOrderSum();
+}
+
+// Пересчет суммы заказа из всех строк онлайн
+function updateTotalOrderSum() {
+    let tb = document.querySelector("#orderTable tbody");
+    let rows = tb.querySelectorAll('tr');
+    let sum = 0;
+    rows.forEach(tr => {
+        let tds = tr.querySelectorAll('td');
+        let priceTd = tds[23];
+        let val = 0;
+        if (priceTd) {
+            let input = priceTd.querySelector('input');
+            if (input && input.value !== "") {
+                val = +input.value.replace(/[^\d.-]/g, '');
+            } else {
+                val = +(priceTd.textContent.replace(/[^\d.-]/g, ''));
+            }
+            if (!isNaN(val) && val !== "") sum += val;
+        }
+    });
+    let tf = document.getElementById('totalCost');
+    if (tf) tf.textContent = sum.toFixed(2) + ' ₽';
+}
+
+function updateTotalOrderSum() {
+    let tb = document.querySelector("#orderTable tbody");
+    let rows = tb.querySelectorAll('tr');
+    let sum = 0;
+    rows.forEach(tr => {
+        let tds = tr.querySelectorAll('td');
+        let priceTd = tds[23];
+        let val = 0;
+        if (priceTd) {
+            let input = priceTd.querySelector('input');
+            if (input && input.value !== "") {
+                val = +input.value.replace(/[^\d.-]/g,''); // убираем все кроме цифр, . -
+            } else {
+                // если вдруг input пуст, читаем текстовое содержимое ячейки (возможно сумма от старого рендера)
+                val = +(priceTd.textContent.replace(/[^\d.-]/g,''));
+            }
+            if (!isNaN(val) && val !== "") sum += val;
+        }
+    });
+    let tf = document.getElementById('totalCost');
+    if (tf) tf.textContent = sum.toFixed(2) + ' ₽';
+}
+function downloadOrderTxt() {
+    const cur = getCurrentOrder();
+    if (!cur) return;
+
+    let txt = "ЗАКАЗ\n\n";
+    txt += `Имя: ${cur.client.fio||"Не указано"}\n`;
+    txt += `Телефон: ${cur.client.phone||"Не указано"}\n`;
+    txt += `Адрес: ${cur.client.addr||"Не указано"}\n\n`;
+
+    txt += "Состав заказа:\n\n";
+
+    (cur.table||[]).forEach((row,i)=>{
+        // блок для каждой позиции
+        let lines = [];
+       lines.push(`${i+1}. ${getRu('productType', row.prodType||"")}`);
+
+if(row.mat)    lines.push(`Материал: ${getRu('material', row.mat)}`);
+if(row.color)  lines.push(`Цвет окантовки: ${getRu('color', row.color)}`);
+if(row.glass)  lines.push(`Стекло: ${getRu('glass', row.glass)}`);
+if(row.opening && row.opening !== "-") lines.push(`Открывание: ${row.opening}`);
+
+if(row.size)   lines.push(`Размеры: ${row.size.replace("×"," x ")} см`);
+
+if(row.materialCost) lines.push(`Материал (₽): ${Number(row.materialCost).toFixed(2)} ₽`);
+if(row.fittingsCost) lines.push(`Фурнитура (₽): ${Number(row.fittingsCost).toFixed(2)} ₽`);
+if(row.moskitCost)   lines.push(`Москитная сетка (₽): ${Number(row.moskitCost).toFixed(2)} ₽`);
+if(row.pocketCost)   lines.push(`Юбка (₽): ${Number(row.pocketCost).toFixed(2)} ₽`);
+
+if(row.extraLockType && row.extraLockType !== "none" && row.extraLockType !== "-") {
+    let countStr = (row.extraLockCount && row.extraLockCount !== "-") ? ` (${row.extraLockCount} шт.)` : "";
+    lines.push(`Доп. замки: ${getRu('extraLockType',row.extraLockType)}${countStr}`);
+}
+if(row.extraLockCost)    lines.push(`Замки (₽): ${Number(row.extraLockCost).toFixed(2)} ₽`);
+
+if(row.extraZipperType && row.extraZipperType !== "none" && row.extraZipperType !== "-")
+    lines.push(
+      `Доп. молния: ${getRu('extraZipperType',row.extraZipperType)}${row.extraZipperLen && row.extraZipperLen !== "-" ? " ("+row.extraZipperLen+" см)" : ""}`
+    );
+if(row.extraZipperCost)  lines.push(`Молния (₽): ${Number(row.extraZipperCost).toFixed(2)} ₽`);
+
+if(row.glassSurcharge)   lines.push(`Тонировка (₽): ${Number(row.glassSurcharge).toFixed(2)} ₽`);
+if(row.installCost)      lines.push(`Монтаж (₽): ${Number(row.installCost).toFixed(2)} ₽`);
+if(row.extraWorkPrice)   lines.push(`Доп. работы (₽): ${Number(row.extraWorkPrice).toFixed(2)} ₽`);
+if(row.extraWorkDesc)    lines.push(`Описание: ${row.extraWorkDesc}`);
+if(row.price)            lines.push(`Итого: ${Number(row.price).toFixed(2)} ₽`);
+        txt += lines.join("\n") + "\n\n";
+    });
+
+    // Общая сумма
+    let total = (cur.table||[]).reduce((s,row)=>row.price?s+Number(row.price):s,0);
+    txt += `Итого: ${total ? Number(total).toFixed(2) + " ₽" : ""}\n`;
+
+    const blob = new Blob([txt], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `order_${cur.num||cur.id||'new'}.txt`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+function handleTxtUpload(ev) {
+    const file = ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const txt = e.target.result.trim();
+        if (!txt) return alert("Файл пустой!");
+
+        //ищем начало секции "Состав заказа:" и режем только по позициям
+        let pos = txt.indexOf("Состав заказа:");
+        if(pos===-1) return alert("Не найден блок Состав заказа");
+        let lines = txt.slice(pos + "Состав заказа:".length).split("\n");
+
+        // собираем блоки между номерами позиций (т.е. "1.", "2.", ...)
+        let orders = [];
+        let cur = [];
+        lines.forEach(line=>{
+            if (/^\s*\d+\.\s/.test(line)) {
+                // новая позиция
+                if(cur.length) orders.push(cur);
+                cur = [line];
+            } else {
+                if (line.trim()==='') return;
+                cur.push(line);
+            }
+        });
+        if(cur.length) orders.push(cur);
+
+        // парсим каждый блок текстовой позиции
+        const parseRow = (blockArr) => {
+            let row={};
+            blockArr.forEach(l=>{
+                l = l.trim();
+                if(/^(\d+)\.\s+(.+)/.test(l)) row.prodType = l.replace(/^(\d+)\.\s+/,'');
+                else if(/^Материал:/i.test(l)) row.mat = l.replace(/^Материал:/i,'').trim();
+                else if(/^Цвет окантовки:/i.test(l)) row.color = l.replace(/^Цвет окантовки:/i,'').trim();
+                else if(/^Стекло:/i.test(l)) row.glass = l.replace(/^Стекло:/i,'').trim();
+                else if(/^Открывание:/i.test(l)) row.opening = l.replace(/^Открывание:/i,'').trim();
+                else if(/^Размеры:/i.test(l)) row.size = l.replace(/^Размеры:/i,'').replace(/см$/,'').trim();
+                else if(/^Фурнитура:/i.test(l)) row.fittingsCost = +l.replace(/^Фурнитура:/i,'').replace(/[^\d.]/g,'');
+                else if(/^Москитная сетка:/i.test(l)) row.moskitCost = +l.replace(/^Москитная сетка:/i,'').replace(/[^\d.]/g,'');
+                else if(/^Юбка:/i.test(l)) row.pocketCost = +l.replace(/^Юбка:/i,'').replace(/[^\d.]/g,'');
+                else if(/^Доп\. замки:/i.test(l)) row.extraLockType = l.replace(/^Доп\. замки:/i,'').trim();
+                else if(/^Замки \(₽\):/i.test(l)) row.extraLockCost = +l.replace(/^Замки \(₽\):/i,'').replace(/[^\d.]/g,'');
+                else if(/^Доп\. молния:/i.test(l)) row.extraZipperType = l.replace(/^Доп\. молния:/i,'').replace(/\(\d+\s*см\)/,'').trim();
+                else if(/^Молния \(₽\):/i.test(l)) row.extraZipperCost = +l.replace(/^Молния \(₽\):/i,'').replace(/[^\d.]/g,'');
+                else if(/^Тонировка \(₽\):/i.test(l)) row.glassSurcharge = +l.replace(/^Тонировка \(₽\):/i,'').replace(/[^\d.]/g,'');
+                else if(/^Монтаж \(₽\):/i.test(l)) row.installCost = +l.replace(/^Монтаж \(₽\):/i,'').replace(/[^\d.]/g,'');
+                else if(/^Материал:/i.test(l)) row.materialCost = +l.replace(/^Материал:/i,'').replace(/[^\d.]/g,'');
+                else if(/^Доп\. работы:/i.test(l)) row.extraWorkPrice = +l.replace(/^Доп\. работы:/i,'').replace(/[^\d.]/g,'');
+                else if(/^Описание:/i.test(l)) row.extraWorkDesc = l.replace(/^Описание:/i,'').trim();
+                else if(/^Итого:/i.test(l)) row.price = +l.replace(/^Итого:/i,'').replace(/[^\d.]/g,'');
+            });
+            return row;
+        };
+
+        let resultRows = orders.map(parseRow).filter(r=>Object.keys(r).length>0);
+
+        if(!resultRows.length) return alert("Не найдено ни одной позиции!");
+
+        // Модифицируем таблицу заказа!
+        let curOrder = getCurrentOrder();
+        if(!curOrder) return alert("Нет выбранного заказа!");
+        curOrder.table = resultRows;
+        saveOrders();
+        renderOrderTable();
+        alert("Импортировано позиций: "+resultRows.length);
+    };
+    reader.readAsText(file);
+}
+// Заглушки для редактирования (реализуйте как хотите)
+
+
+function getCurrentOrder() {
+    return orders.find(o=>o.id==currentOrderId) || orders[0];
+}
+
+// --- Простая CRM/работа с заказами ---
+const STATUS_LIST = [
+  { key: 'novy',      label: 'Новый',         cls: 'novy' },
+  { key: 'oplachen',  label: 'Оплачен',       cls: 'oplachen' },
+  { key: 'v_rabote',  label: 'В работе',      cls: 'v_rabote' },
+  { key: 'izgotovlen',label: 'Изготовлен',    cls: 'izgotovlen' },
+  { key: 'otgruzhen', label: 'Отгружен',      cls: 'otgruzhen' }
+];
+let orders = [];
+let currentOrderId = null;
+const ORDERS_KEY = 'crm_myagkie_okna_orders';
+
+window.addEventListener('DOMContentLoaded', function() {
+    loadOrders();
+    renderOrderList();
+    renderOrderTable();
+    loadClientInfo();
+    document.getElementById('findOrder').oninput = function() {
+        renderOrderList(this.value);
+    };
+    setReadonlyClient(true);
+});
+
+// Список заказов слева
+function renderOrderList(filter = "") {
+    let list = document.getElementById("ordersList");
+    list.innerHTML = "";
+    let filtered = filter ? orders.filter(o => 
+        (o.client.fio||"").toLowerCase().includes(filter.toLowerCase()) ||
+        (o.num && (""+o.num).includes(filter))
+    ) : orders;
+    filtered.forEach(order => {
+        let st = STATUS_LIST.find(s=>s.key===order.status)||STATUS_LIST[0];
+        let html = `<div class="order-item${order.id==currentOrderId?' active':''}" ondblclick="toggleOrderStatus('${order.id}')" onclick="selectOrder('${order.id}')">
+              <b>#${order.num}</b> | ${order.client.fio || "(Без имени)"}
+              <span class="order-status ${st.cls}">${st.label}</span>
+            </div>`;
+        list.innerHTML += html;
+    });
+}
+function selectOrder(id) {
+    currentOrderId = id;
+    saveOrders();
+    renderOrderList();
+    renderOrderTable();
+    loadClientInfo();
+    let cur = getCurrentOrder();
+    let st = STATUS_LIST.find(s=>s.key===cur.status)||STATUS_LIST[0];
+    setCurOrderStatus(cur.num, st.cls, st.label);
+    setReadonlyClient(true);
+}
+function duplicateOrder() {
+    let cur = getCurrentOrder();
+    if (!cur) return;
+    let newOrder = JSON.parse(JSON.stringify(cur));
+    let maxNum = orders.length>0 ? Math.max(...orders.map(o=>+o.num)) : 10000;
+    newOrder.id = "ord" + (+new Date()) + Math.floor(Math.random()*1000);
+    newOrder.num = maxNum + 1;
+    orders.unshift(newOrder);
+    currentOrderId = newOrder.id;
+    saveOrders();
+    renderOrderList();
+    renderOrderTable();
+    loadClientInfo();
+    setReadonlyClient(true);
+}
+function deleteOrder() {
+    let idx = orders.findIndex(o => o.id == currentOrderId);
+    if (idx == -1) return;
+    if (!confirm("Удалить заказ?")) return;
+    orders.splice(idx,1);
+    currentOrderId = orders.length ? orders[0].id : null;
+    saveOrders();
+    renderOrderList();
+    renderOrderTable();
+    loadClientInfo();
+    setReadonlyClient(true);
+}
+function toggleOrderStatus(id) {
+    let order = orders.find(o=>o.id==id);
+    if (!order) return;
+    let idx = STATUS_LIST.findIndex(s=>s.key===order.status);
+    let next = (idx+1)%STATUS_LIST.length;
+    order.status = STATUS_LIST[next].key;
+    saveOrders();
+    renderOrderList();
+    if (id===currentOrderId) setCurOrderStatus(order.num, STATUS_LIST[next].cls, STATUS_LIST[next].label);
+}
+function setCurOrderStatus(num, cls, label) {
+   let node = document.getElementById("curOrderTitle");
+   let sn = document.getElementById("curOrderStatus");
+   if (sn) sn.remove();
+   node.innerHTML = `Заказ №${num} <span class="client-status ${cls}" id="curOrderStatus">| ${label}</span>`;
+}
+function saveOrders() { localStorage.setItem('crm_myagkie_okna_orders', JSON.stringify(orders)); }
+function loadOrders() {
+    let arr = localStorage.getItem('crm_myagkie_okna_orders');
+    if (!arr) {
+        orders = [{
+            id: "orddemo1", num: 10012, status:'v_rabote',
+            client:{fio:"Иванов Сергей",phone:"+7 900 000-00-01",addr:"г. Тверь, ул. Зеленая, 12",email:"test@mail.ru",track:"",logistic:""},
+            table: [{prodType:"Окно", size:"140×200", mat:"ПВХ белый", glass:"Прозрачное", price:12300}]
+        },{
+            id: "orddemo2", num: 10011, status:'izgotovlen',
+            client:{fio:"ЗАО «Астра»",phone:"",addr:"",email:"",track:"",logistic:""},
+            table:[]
+        },{
+            id: "orddemo3", num: 10010, status:'novy',
+            client:{fio:"Частное лицо",phone:"",addr:"",email:"",track:"",logistic:""},
+            table:[]
+        }];
+        currentOrderId = orders[0].id;
+        saveOrders();
+    } else {
+        orders = JSON.parse(arr);
+        currentOrderId = orders.length ? orders[0].id : null;
+    }
+}
+
+function showCreateOrderModal() {
+    let maxNum = orders.length > 0 ? Math.max(...orders.map(o=>+o.num)) : 10000;
+    document.getElementById("inputOrderNum").value = maxNum + 1;
+    document.getElementById("inputOrderName").value = "";
+    document.getElementById("createOrderModal").style.display = "block";
+}
+
+function saveCreateOrder() {
+    let name = document.getElementById("inputOrderName").value.trim();
+    let num = parseInt(document.getElementById("inputOrderNum").value) || (orders.length? Math.max(...orders.map(o=>+o.num))+1 : 10001);
+    let newOrder = {
+        id: "ord" + (+new Date()) + Math.floor(Math.random()*1000),
+        num: num,
+        status: 'novy',
+        client: {fio:name,phone:"",addr:"",email:"",track:"",logistic:""},
+        table: []
+    };
+    orders.unshift(newOrder);
+    currentOrderId = newOrder.id;
+    saveOrders();
+    document.getElementById("createOrderModal").style.display = "none";
+    renderOrderList();
+    renderOrderTable();
+    loadClientInfo();
+}
+function closeCreateOrderModal(e) {
+    if(!e || !e.target || e.target === document.getElementById("createOrderModal")) {
+        document.getElementById("createOrderModal").style.display = "none";
+        return false;
+    }
+    return true;
+}
+// --- КЛИЕНТ справа (форма, сохранение) ---
+function setReadonlyClient(readonly) {
+  ["fio","phone","addr","email","track","logistic"].forEach(id=>{
+    let el=document.getElementById(id);
+    if (readonly) { el.setAttribute('readonly', true); } else { el.removeAttribute('readonly');}
+  });
+  let btns = document.getElementById("clientBtns");
+  btns.innerHTML = "";
+  if(readonly){
+    btns.innerHTML = `<button id="btnEditClient" onclick="editClientFields()">Редактировать</button>
+                      <button class="green" type="button" onclick="openOrderModal()">Оформить заказ</button>`;
+  } else {
+    btns.innerHTML = `<button onclick="saveClientInfo();setReadonlyClient(true);">Сохранить</button>
+                      <button class="green" type="button" onclick="openOrderModal()">Оформить заказ</button>`;
+  }
+}
+function editClientFields() { setReadonlyClient(false); }
+function saveClientInfo() {
+    let order = getCurrentOrder();
+    if (!order) return;
+    let oldfio = order.client.fio||"";
+    order.client.fio = document.getElementById("fio").value;
+    order.client.phone = document.getElementById("phone").value;
+    order.client.addr = document.getElementById("addr").value;
+    order.client.email = document.getElementById("email").value;
+    order.client.track = document.getElementById("track").value;
+    order.client.logistic = document.getElementById("logistic").value;
+    saveOrders();
+    if (oldfio!==order.client.fio) renderOrderList(document.getElementById('findOrder').value);
+}
+function loadClientInfo() {
+    let order = getCurrentOrder();
+    if (!order) return;
+    document.getElementById("fio").value = order.client.fio||"";
+    document.getElementById("phone").value = order.client.phone||"";
+    document.getElementById("addr").value = order.client.addr||"";
+    document.getElementById("email").value = order.client.email||"";
+    document.getElementById("track").value = order.client.track||"";
+    document.getElementById("logistic").value = order.client.logistic||"";
+    let st = STATUS_LIST.find(s=>s.key===order.status)||STATUS_LIST[0];
+    setCurOrderStatus(order.num, st.cls, st.label);
+    setReadonlyClient(true);
+}
+
+function openOrderModal() {
+    let order = getCurrentOrder();
+    document.getElementById('modal-num').textContent = '№'+(order.num || '-');
+    document.getElementById('modal-fio').textContent = order.client.fio || '-';
+    document.getElementById('modal-phone').textContent = order.client.phone || '-';
+    document.getElementById('modal-track').textContent = order.client.track || '-';
+    document.getElementById('modal-logistic').textContent = order.client.logistic || "-";
+    document.getElementById('order-modal').style.display = 'block';
+}
+function closeOrderModal(e) {
+    if(!e || !e.target || e.target === document.getElementById('order-modal'))
+        document.getElementById('order-modal').style.display = 'none';
+}
+
+// === ПРАЙС ===
+
+function switchPriceType(type) {
+    priceType = type;
+    document.getElementById('tabRetail').classList.toggle('active', type === 'retail');
+    document.getElementById('tabOpt').classList.toggle('active', type === 'opt');
+    renderOrderTable();
+}
+function openPriceModal() {
+    document.getElementById('priceModal').style.display = 'block';
+    priceTabSwitch(priceType);
+}
+function priceTabSwitch(type) {
+    priceType = type;
+    document.getElementById('priceTabRetail').classList.toggle('active', type === 'retail');
+    document.getElementById('priceTabOpt').classList.toggle('active', type === 'opt');
+    let p = (JSON.parse(localStorage.getItem('pricesMulti'))||defaultPrices)[type]||defaultPrices[type];
+    document.getElementById('price_pvh').value = p.material_pvc || p.pvh;
+    document.getElementById('price_oxf').value = p.material_oxford || p.oxf;
+    document.getElementById('price_screen').value = p.material_screen || p.screen;
+    document.getElementById('price_ms').value  = p.moskit || p.ms;
+    document.getElementById('price_pocket').value = p.pocket;
+    document.getElementById('price_scoba').value = p.extraLock_rotary || p.scoba;
+    document.getElementById('price_france').value = p.extraLock_french || p.france;
+    document.getElementById('price_zip_spiral').value = p.extraZipper_spiral || p.zip_spiral;
+    document.getElementById('price_zip_tractor').value = p.extraZipper_tractor || p.zip_tractor;
+    document.getElementById('price_tint').value = p.glassTint || p.tint;
+    document.getElementById('price_install').value = p.install;
+}
+function savePrice() {
+    let allPrices = JSON.parse(localStorage.getItem('pricesMulti')) || {...defaultPrices};
+    let t = priceType;
+    allPrices[t] = {
+        material_pvc: document.getElementById('price_pvh').value,
+        material_oxford: document.getElementById('price_oxf').value,
+        material_screen: document.getElementById('price_screen').value,
+        moskit: document.getElementById('price_ms').value,
+        pocket: document.getElementById('price_pocket').value,
+        extraLock_rotary: document.getElementById('price_scoba').value,
+        extraLock_french: document.getElementById('price_france').value,
+        extraZipper_spiral: document.getElementById('price_zip_spiral').value,
+        extraZipper_tractor: document.getElementById('price_zip_tractor').value,
+        glassTint: document.getElementById('price_tint').value,
+        install: document.getElementById('price_install').value
+    };
+    localStorage.setItem('pricesMulti', JSON.stringify(allPrices));
+    document.getElementById('priceModal').style.display = 'none';
+    alert('Прайс сохранён!');
+    renderOrderTable();
+}
+function switchPriceType(type) {
+    priceType = type;
+    document.getElementById('tabRetail').classList.toggle('active', type === 'retail');
+    document.getElementById('tabOpt').classList.toggle('active', type === 'opt');
+    autoCalculate();        // Обновит block "Итоговая стоимость"
+    renderOrderTable();     // Обновит таблицу заказа
+}
+function resetPricesToDefault() {
+    if(!confirm('Сбросить прайсы к стандартным?')) return;
+    localStorage.setItem('pricesMulti', JSON.stringify(defaultPrices));
+    priceTabSwitch(priceType);
+}
+function getFrameColor(colorName) {
+    return {
+        'brown': '#734C29', 'white': '#eaeaea', 'gray': '#b5b7bb',
+        'beige': '#e9deb9', 'black': '#2c2b2a', 'blue': '#195ee6'
+    }[colorName] || "#195ee6";
+}
+// Цвет "стекла"
+function getGlassColor(glassType) {
+    if (glassType === "tinted") return "#ede3d1";
+    return "#f8fbff";
+}
+
+// Стрелки размеров
+function getSizeArrows(outer, width, height) {
+    let heightLineX = outer.x + outer.w + 30;
+    let heightLineY1 = outer.y, heightLineY2 = outer.y+outer.h, heightTick = 12;
+    let heightDim = `
+      <line x1="${heightLineX}" y1="${heightLineY1}" x2="${heightLineX}" y2="${heightLineY2}" stroke="#222" stroke-width="1.5"/>
+      <line x1="${heightLineX-heightTick}" y1="${heightLineY1}" x2="${heightLineX+heightTick}" y2="${heightLineY1}" stroke="#222" stroke-width="1.5"/>
+      <line x1="${heightLineX-heightTick}" y1="${heightLineY2}" x2="${heightLineX+heightTick}" y2="${heightLineY2}" stroke="#222" stroke-width="1.5"/>
+      <text x="${heightLineX+10}" y="${outer.y+outer.h/2+6}" font-size="13" fill="#222" font-weight="bold" style="dominant-baseline:middle">${Math.round(height)} см</text>`;
+    let widthLineY = outer.y + outer.h + 32;
+    let widthLineX1 = outer.x, widthLineX2 = outer.x+outer.w, widthTick = 12;
+    let widthDim = `<line x1="${widthLineX1}" y1="${widthLineY}" x2="${widthLineX2}" y2="${widthLineY}" stroke="#222" stroke-width="1.5"/>
+      <line x1="${widthLineX1}" y1="${widthLineY-widthTick}" x2="${widthLineX1}" y2="${widthLineY+widthTick}" stroke="#222" stroke-width="1.5"/>
+      <line x1="${widthLineX2}" y1="${widthLineY-widthTick}" x2="${widthLineX2}" y2="${widthLineY+widthTick}" stroke="#222" stroke-width="1.5"/>
+      <text x="${outer.x+outer.w/2-30}" y="${widthLineY+18}" font-size="13" fill="#222" font-weight="bold">${Math.round(width)} см</text>`;
+    return heightDim + widthDim;
+}
+
+
+// ==== ДВЕРИ ====
+
+// 1 молния (спираль), по центру
+function buildDoorZipperCenterSpiralSVG(width=250, height=130, okantovka='brown', glassType='clear')  {
+    const SVGsize = 290;
+    const bandWidth = 17;
+    const gap = 8;
+      const scaleW = 0.55, scaleH = 1.10;
+    let doorW = (SVGsize - 2 * gap) * scaleW;
+    let doorH = (SVGsize - 2 * gap) * scaleH;
+    if (doorH > SVGsize - 2 * gap) doorH = SVGsize - 2 * gap;
+    const offsetX = (SVGsize - doorW) / 2;
+    const offsetY = (SVGsize - doorH) / 2;
+    const outer = { x: offsetX, y: offsetY, w: doorW, h: doorH };
+    const inner = { x: offsetX + bandWidth, y: offsetY + bandWidth, w: doorW - bandWidth*2, h: doorH - bandWidth*2 };
+
+    // Метки, рама и стекло
+    let lblA = `<text x="${outer.x-15}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">A</text>`;
+    let lblB = `<text x="${outer.x+outer.w+4}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">B</text>`;
+    let lblD = `<text x="${outer.x-15}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">D</text>`;
+    let lblC = `<text x="${outer.x+outer.w+4}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">C</text>`;
+    let okantovkaRect = `
+      <rect x="${outer.x}" y="${outer.y}" width="${outer.w}" height="${outer.h}" fill="${getFrameColor(okantovka)}"/>
+      <rect x="${inner.x}" y="${inner.y}" width="${inner.w}" height="${inner.h}" fill="${getGlassColor(glassType)}"/>
+    `;
+
+    let holes = '';
+    const r = 4;
+    for(let i=0;i<3;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/2;
+        let cyT = outer.y+bandWidth/2;
+        let cyB = outer.y+outer.h-bandWidth/2;
+        holes += `<circle cx="${cx}" cy="${cyT}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>`;
+        holes += `<circle cx="${cx}" cy="${cyB}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>`;
+    }
+    for(let i=0;i<4;i++) {
+        let cy = outer.y+bandWidth/2 + i*(outer.h-bandWidth)/3;
+        let cxL = outer.x+bandWidth/2, cxR = outer.x+outer.w-bandWidth/2;
+        holes += `<circle cx="${cxL}" cy="${cy}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>`;
+        holes += `<circle cx="${cxR}" cy="${cy}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>`;
+    }
+
+    // одна спиральная молния по центру!
+    let zippers = '';
+    const zipW = 10;
+    let zx = inner.x + inner.w/2;
+    zippers += `<rect x="${zx-zipW/2}" y="${inner.y}" width="${zipW}" height="${inner.h}" fill="#f6f6f7" stroke="#000" stroke-width="1.5"/>`;
+    for(let z=0; z < Math.floor(inner.h/11); z++) {
+        let y = inner.y+5+z*11;
+        zippers += `<rect x="${zx-2.2}" y="${y}" width="4.4" height="2.5" fill="#333" rx="0.9"/>`;
+    }
+
+    let sizeArrows = getSizeArrows(outer, width, height);
+    return `<svg id="mainSVG" width="${SVGsize}" height="${SVGsize+60}" xmlns="http://www.w3.org/2000/svg">
+        ${okantovkaRect}
+        ${lblA}${lblB}${lblC}${lblD}
+        ${holes}
+        ${zippers}
+        ${sizeArrows}
+    </svg>`;
+}
+
+// 1 молния (трактор), по центру
+function buildDoorZipperCenterTraktorSVG(width=250, height=130, okantovka='brown', glassType='clear')  {
+    const SVGsize = 290;
+    const bandWidth = 17;
+    const gap = 8;
+    const scaleW = 0.55, scaleH = 1.10;
+    let doorW = (SVGsize - 2 * gap) * scaleW;
+    let doorH = (SVGsize - 2 * gap) * scaleH;
+    if (doorH > SVGsize - 2 * gap) doorH = SVGsize - 2 * gap;
+    const offsetX = (SVGsize - doorW) / 2;
+    const offsetY = (SVGsize - doorH) / 2;
+    const outer = { x: offsetX, y: offsetY, w: doorW, h: doorH };
+    const inner = { x: offsetX + bandWidth, y: offsetY + bandWidth, w: doorW - bandWidth*2, h: doorH - bandWidth*2 };
+
+  let lblA = `<text x="${outer.x-15}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">A</text>`;
+    let lblB = `<text x="${outer.x+outer.w+4}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">B</text>`;
+    let lblD = `<text x="${outer.x-15}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">D</text>`;
+    let lblC = `<text x="${outer.x+outer.w+4}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">C</text>`;
+    let okantovkaRect = `
+      <rect x="${outer.x}" y="${outer.y}" width="${outer.w}" height="${outer.h}" fill="${getFrameColor(okantovka)}"/>
+      <rect x="${inner.x}" y="${inner.y}" width="${inner.w}" height="${inner.h}" fill="${getGlassColor(glassType)}"/>
+    `;
+
+    let holes = '';
+    const r = 4;
+    for(let i=0;i<3;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/2;
+        let cyT = outer.y+bandWidth/2;
+        let cyB = outer.y+outer.h-bandWidth/2;
+        holes += `<circle cx="${cx}" cy="${cyT}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>`;
+        holes += `<circle cx="${cx}" cy="${cyB}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>`;
+    }
+    for(let i=0;i<4;i++) {
+        let cy = outer.y+bandWidth/2 + i*(outer.h-bandWidth)/3;
+        let cxL = outer.x+bandWidth/2, cxR = outer.x+outer.w-bandWidth/2;
+        holes += `<circle cx="${cxL}" cy="${cy}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>`;
+        holes += `<circle cx="${cxR}" cy="${cy}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>`;
+    }
+
+    // одна тракторная молния по центру!
+    let zippers = '';
+    const zipW = 14;
+    let zx = inner.x + inner.w/2;
+    zippers += `<rect x="${zx-zipW/2}" y="${inner.y}" width="${zipW}" height="${inner.h}" fill="#eaeaea" stroke="#333" stroke-width="2"/>`;
+    for(let z=0;z< Math.floor(inner.h/12); z++) {
+        let y = inner.y+6+z*12;
+        zippers += `<rect x="${zx-3}" y="${y-3}" width="6" height="6" fill="#606060" rx="1.3"/>`;
+        zippers += `<rect x="${zx-6}" y="${y}" width="12" height="2.2" fill="#333" />`;
+    }
+
+    let sizeArrows = getSizeArrows(outer, width, height);
+    return `<svg id="mainSVG" width="${SVGsize}" height="${SVGsize+60}" xmlns="http://www.w3.org/2000/svg">
+        ${okantovkaRect}
+        ${lblA}${lblB}${lblC}${lblD}
+        ${holes}
+        ${zippers}
+        ${sizeArrows}
+    </svg>`;
+}
+
+// 2 молнии (спираль)
+function buildDoorZipperSpiralSVG(width=250, height=130, okantovka='brown', glassType='clear')  {
+      const SVGsize = 290;
+    const bandWidth = 17;
+    const gap = 8;
+    
+    // Итоговые размеры двери — меньше по ширине на 15%, выше на 15%
+   const scaleW = 0.55, scaleH = 1.10;
+// 0.85 (на 15% уже) → 0.65 (ещё на 20% уже, то есть 100% - 35% = 65%)
+    let doorW = (SVGsize - 2 * gap) * scaleW;
+    let doorH = (SVGsize - 2 * gap) * scaleH;
+    if (doorH > SVGsize - 2 * gap) doorH = SVGsize - 2 * gap; // Не вылезти за полотно!
+
+    // Центрируем дверь в SVG-поле
+    const offsetX = (SVGsize - doorW) / 2;
+    const offsetY = (SVGsize - doorH) / 2;
+    const outer = { x: offsetX, y: offsetY, w: doorW, h: doorH };
+    const inner = { x: offsetX + bandWidth, y: offsetY + bandWidth, w: doorW - bandWidth*2, h: doorH - bandWidth*2 };
+
+    // Метки ABCD
+     let lblA = `<text x="${outer.x-15}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">A</text>`;
+    let lblB = `<text x="${outer.x+outer.w+4}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">B</text>`;
+    let lblD = `<text x="${outer.x-15}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">D</text>`;
+    let lblC = `<text x="${outer.x+outer.w+4}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">C</text>`;
+
+    // Рама + "стекло"
+    let okantovkaRect = `
+      <rect x="${outer.x}" y="${outer.y}" width="${outer.w}" height="${outer.h}" fill="${getFrameColor(okantovka)}"/>
+      <rect x="${inner.x}" y="${inner.y}" width="${inner.w}" height="${inner.h}" fill="${getGlassColor(glassType)}"/>
+    `;
+
+    // Круглые люверсы по всему периметру!
+    let holes = '';
+    const r = 4;
+    // Верх/низ — например, 4 шт.
+    for(let i=0;i<3;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/2;
+        let cyT = outer.y+bandWidth/2;
+        let cyB = outer.y+outer.h-bandWidth/2;
+        holes += `<circle cx="${cx}" cy="${cyT}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>`;
+        holes += `<circle cx="${cx}" cy="${cyB}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>`;
+    }
+    // Лево/право — 5 шт.
+    for(let i=0;i<4;i++) {
+        let cy = outer.y+bandWidth/2 + i*(outer.h-bandWidth)/3;
+        let cxL = outer.x+bandWidth/2, cxR = outer.x+outer.w-bandWidth/2;
+        holes += `<circle cx="${cxL}" cy="${cy}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>`;
+        holes += `<circle cx="${cxR}" cy="${cy}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>`;
+    }
+    let zippers = '';
+const zipPad = 14, zipW = 10;
+// Левая молния (теперь визуал тонкая полоска и маленькие прямоугольники)
+let zx1 = inner.x+zipPad;
+zippers += `<rect x="${zx1-zipW/2}" y="${inner.y}" width="${zipW}" height="${inner.h}" fill="#f6f6f7" stroke="#000" stroke-width="1.3"/>`;
+for(let z=0; z < Math.floor(inner.h/11); z++) {
+    let y = inner.y+5+z*11;
+    zippers += `<rect x="${zx1-2.2}" y="${y}" width="4.4" height="2.5" fill="#333" rx="0.9"/>`;
+}
+// Правая молния так же:
+let zx2 = inner.x+inner.w-zipPad;
+zippers += `<rect x="${zx2-zipW/2}" y="${inner.y}" width="${zipW}" height="${inner.h}" fill="#f6f6f7" stroke="#000" stroke-width="1.3"/>`;
+for(let z=0; z < Math.floor(inner.h/11); z++) {
+    let y = inner.y+5+z*11;
+    zippers += `<rect x="${zx2-2.2}" y="${y}" width="4.4" height="2.5" fill="#333" rx="0.9"/>`;
+}
+
+    // Размерные стрелки
+    let sizeArrows = getSizeArrows(outer, width, height);
+
+    return `<svg id="mainSVG" width="${SVGsize}" height="${SVGsize+60}" xmlns="http://www.w3.org/2000/svg">
+        ${okantovkaRect}
+        ${lblA}${lblB}${lblC}${lblD}
+        ${holes}
+        ${zippers}
+        ${sizeArrows}
+    </svg>`;
+}
+
+// 2 молнии (трактор)
+function buildDoorZipperTraktorSVG(width=250, height=130, okantovka='brown', glassType='clear')  {
+  const SVGsize = 290;
+    const bandWidth = 17;
+    const gap = 8;
+    
+    // Итоговые размеры двери — меньше по ширине на 15%, выше на 15%
+   const scaleW = 0.55, scaleH = 1.10;
+    let doorW = (SVGsize - 2 * gap) * scaleW;
+    let doorH = (SVGsize - 2 * gap) * scaleH;
+    if (doorH > SVGsize - 2 * gap) doorH = SVGsize - 2 * gap; // safety
+
+    // Центрируем дверь в SVG
+    const offsetX = (SVGsize - doorW) / 2;
+    const offsetY = (SVGsize - doorH) / 2;
+    const outer = { x: offsetX, y: offsetY, w: doorW, h: doorH };
+    const inner = { x: offsetX + bandWidth, y: offsetY + bandWidth, w: doorW - bandWidth*2, h: doorH - bandWidth*2 };
+
+    // Метки ABCD
+     let lblA = `<text x="${outer.x-15}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">A</text>`;
+    let lblB = `<text x="${outer.x+outer.w+4}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">B</text>`;
+    let lblD = `<text x="${outer.x-15}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">D</text>`;
+    let lblC = `<text x="${outer.x+outer.w+4}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">C</text>`;
+
+
+    // Рама и стекло
+    let okantovkaRect = `
+      <rect x="${outer.x}" y="${outer.y}" width="${outer.w}" height="${outer.h}" fill="${getFrameColor(okantovka)}"/>
+      <rect x="${inner.x}" y="${inner.y}" width="${inner.w}" height="${inner.h}" fill="${getGlassColor(glassType)}"/>
+    `;
+
+    // Люверсы (круги по всему периметру)
+    let holes = '';
+    const r = 4;
+    // Верх/низ — 4 шт.
+    for(let i=0;i<3;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/2;
+        let cyT = outer.y+bandWidth/2;
+        let cyB = outer.y+outer.h-bandWidth/2;
+        holes += `<circle cx="${cx}" cy="${cyT}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>`;
+        holes += `<circle cx="${cx}" cy="${cyB}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>`;
+    }
+    // Лево/право — 5 шт.
+    for(let i=0;i<4;i++) {
+        let cy = outer.y+bandWidth/2 + i*(outer.h-bandWidth)/3;
+        let cxL = outer.x+bandWidth/2, cxR = outer.x+outer.w-bandWidth/2;
+        holes += `<circle cx="${cxL}" cy="${cy}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>`;
+        holes += `<circle cx="${cxR}" cy="${cy}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>`;
+    }
+
+    // --- ДВЕ МОЛНИИ ТРАКТОР ---
+    let zippers = '';
+    const zipPad = 16, zipW = 14;  // тракторная толще
+    // Левая тракторная
+    let zx1 = inner.x+zipPad;
+    zippers += `<rect x="${zx1-zipW/2}" y="${inner.y}" width="${zipW}" height="${inner.h}" fill="#eaeaea" stroke="#333" stroke-width="2"/>`;
+    for(let z=0;z< Math.floor(inner.h/12); z++) {
+        let y = inner.y+6+z*12;
+        zippers += `<rect x="${zx1-3}" y="${y-3}" width="6" height="6" fill="#606060" rx="1.3"/>`;
+        zippers += `<rect x="${zx1-6}" y="${y}" width="12" height="2.2" fill="#333" />`;
+    }
+    // Правая тракторная
+    let zx2 = inner.x+inner.w-zipPad;
+    zippers += `<rect x="${zx2-zipW/2}" y="${inner.y}" width="${zipW}" height="${inner.h}" fill="#eaeaea" stroke="#333" stroke-width="2"/>`;
+    for(let z=0;z< Math.floor(inner.h/12); z++) {
+        let y = inner.y+6+z*12;
+        zippers += `<rect x="${zx2-3}" y="${y-3}" width="6" height="6" fill="#606060" rx="1.3"/>`;
+        zippers += `<rect x="${zx2-6}" y="${y}" width="12" height="2.2" fill="#333" />`;
+    }
+
+    // Размерные стрелки
+    let sizeArrows = getSizeArrows(outer, width, height);
+
+    return `<svg id="mainSVG" width="${SVGsize}" height="${SVGsize+60}" xmlns="http://www.w3.org/2000/svg">
+        ${okantovkaRect}
+        ${lblA}${lblB}${lblC}${lblD}
+        ${holes}
+        ${zippers}
+        ${sizeArrows}
+    </svg>`;
+}
+
+// ==== ОКНА ====
+
+// Поворотные скобы (пластик)
+function buildSkobaSVG(width=250, height=130, okantovka='brown', glassType='clear') {
+   const SVGsize = 340;
+    const bandWidth = 17;
+    const gap = 8;
+    const innerScale = 0.7;
+    const offsetX = (SVGsize-((SVGsize-gap*2) * innerScale))*0.25, offsetY = (SVGsize-((SVGsize-gap*2) * innerScale))/2;
+    const fieldW = (SVGsize - gap*2) * innerScale, fieldH = (SVGsize - gap*2) * innerScale;
+    const outer = { x: offsetX, y: offsetY, w: fieldW, h: fieldH };
+    const inner = { x: outer.x + bandWidth, y: outer.y + bandWidth, w: outer.w - bandWidth*2, h: outer.h - bandWidth*2 };
+
+    // ABCD-метки
+ let lblA = `<text x="${outer.x-15}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">A</text>`;
+    let lblB = `<text x="${outer.x+outer.w+4}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">B</text>`;
+    let lblD = `<text x="${outer.x-15}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">D</text>`;
+    let lblC = `<text x="${outer.x+outer.w+4}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">C</text>`;
+
+    // Окантовка + "стекло"
+    let okantovkaRect = [
+      `<rect x="${outer.x}" y="${outer.y}" width="${outer.w}" height="${outer.h}" fill="${getFrameColor(okantovka)}"/>`,
+      `<rect x="${inner.x}" y="${inner.y}" width="${inner.w}" height="${inner.h}" fill="${getGlassColor(glassType)}"/>`
+    ].join('');
+
+    // Люверсы — как в buildTechSVG: верх — круглые, лев/право/низ — овалы
+    let holes='';
+    for(let i=0;i<4;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/3;
+        let cy = outer.y+bandWidth/2;
+        holes += `<circle cx="${cx}" cy="${cy}" r="4" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+    }
+    // ЛЕВО/ПРАВО по 3 овала
+    const rx = 7*0.65, ry = 12*0.65;
+    for(let i=0;i<3;i++) {
+        let cy = outer.y+bandWidth/2 + (i+1)*(outer.h-bandWidth)/4;
+        holes += `<ellipse cx="${outer.x+bandWidth/2}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+        holes += `<ellipse cx="${outer.x+outer.w-bandWidth/2}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+    }
+    // НИЗ — 4 люверса: крайние вертикальные, средние горизонтальные (овалы)
+    for(let i=0;i<4;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/3;
+        let cy = outer.y+outer.h-bandWidth/2;
+        if(i === 0 || i === 3) {
+            holes += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+        } else {
+            holes += `<ellipse cx="${cx}" cy="${cy}" rx="${ry}" ry="${rx}" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+        }
+    }
+
+    return `<svg id="mainSVG" width="${SVGsize}" height="${SVGsize+60}" xmlns="http://www.w3.org/2000/svg">
+        ${okantovkaRect}
+        ${lblA}${lblB}${lblC}${lblD}
+        ${holes}
+        ${getSizeArrows(outer, width, height)}
+    </svg>`;
+}
+
+// Глухое (без открывания)
+function buildGluhSVG(width=250, height=130, okantovka='brown', glassType='clear') {
+     const SVGsize = 340;
+    const bandWidth = 17;
+    const gap = 8;
+    const innerScale = 0.7;
+    // Сдвиг влево, как у скоб: !!!!
+    const offsetX = (SVGsize-((SVGsize-gap*2) * innerScale))*0.25, offsetY = (SVGsize-((SVGsize-gap*2) * innerScale))/2;
+    const fieldW = (SVGsize - gap*2) * innerScale, fieldH = (SVGsize - gap*2) * innerScale;
+    const outer = { x: offsetX, y: offsetY, w: fieldW, h: fieldH };
+    const inner = { x: outer.x + bandWidth, y: outer.y + bandWidth, w: outer.w - bandWidth*2, h: outer.h - bandWidth*2 };
+
+    // ABCD-метки
+    let lblA = `<text x="${outer.x-15}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">A</text>`;
+    let lblB = `<text x="${outer.x+outer.w+4}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">B</text>`;
+    let lblD = `<text x="${outer.x-15}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">D</text>`;
+    let lblC = `<text x="${outer.x+outer.w+4}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">C</text>`;
+
+
+    let okantovkaRect = `
+      <rect x="${outer.x}" y="${outer.y}" width="${outer.w}" height="${outer.h}" fill="${getFrameColor(okantovka)}"/>
+      <rect x="${inner.x}" y="${inner.y}" width="${inner.w}" height="${inner.h}" fill="${getGlassColor(glassType)}"/>
+    `;
+    // Круглые люверсы по всему периметру (6 на сторону)
+    let holes = "";
+    const numTop = 4, numBot = 4, numLeft = 5, numRight = 5;
+    const r = 4;
+    for(let i=0;i<numTop;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/(numTop-1);
+        let cy = outer.y+bandWidth/2;
+        holes += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff" stroke="#222" stroke-width="2.2"/>`;
+    }
+    for(let i=0;i<numBot;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/(numBot-1);
+        let cy = outer.y+outer.h-bandWidth/2;
+        holes += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff" stroke="#222" stroke-width="2.2"/>`;
+    }
+    for(let i=1;i<numLeft-1;i++) {
+        let cx = outer.x+bandWidth/2;
+        let cy = outer.y+bandWidth/2 + i*(outer.h-bandWidth)/(numLeft-1);
+        holes += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff" stroke="#222" stroke-width="2.2"/>`;
+    }
+    for(let i=1;i<numRight-1;i++) {
+        let cx = outer.x+outer.w-bandWidth/2;
+        let cy = outer.y+bandWidth/2 + i*(outer.h-bandWidth)/(numRight-1);
+        holes += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff" stroke="#222" stroke-width="2.2"/>`;
+    }
+
+    // Размерные стрелки
+    let sizeArrows = getSizeArrows(outer, width, height);
+
+    return `<svg id="mainSVG" width="${SVGsize}" height="${SVGsize+60}" xmlns="http://www.w3.org/2000/svg">
+        ${okantovkaRect}
+        ${lblA}${lblB}${lblC}${lblD}
+        ${holes}
+        ${sizeArrows}
+    </svg>`;
+}
+// Французский замок (металл)
+function buildFranceSVG(width=250, height=130, okantovka='brown', glassType='clear') {
+    const SVGsize = 340;
+    const bandWidth = 17;
+    const gap = 8;
+    const innerScale = 0.7;
+    const offsetX = (SVGsize-((SVGsize-gap*2) * innerScale))*0.25, offsetY = (SVGsize-((SVGsize-gap*2) * innerScale))/2;
+    const fieldW = (SVGsize - gap*2) * innerScale, fieldH = (SVGsize - gap*2) * innerScale;
+    const outer = { x: offsetX, y: offsetY, w: fieldW, h: fieldH };
+    const inner = { x: outer.x + bandWidth, y: outer.y + bandWidth, w: outer.w - bandWidth*2, h: outer.h - bandWidth*2 };
+
+    // ABCD-метки
+     let lblA = `<text x="${outer.x-15}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">A</text>`;
+    let lblB = `<text x="${outer.x+outer.w+4}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">B</text>`;
+    let lblD = `<text x="${outer.x-15}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">D</text>`;
+    let lblC = `<text x="${outer.x+outer.w+4}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">C</text>`;
+    let okantovkaRect = [
+      `<rect x="${outer.x}" y="${outer.y}" width="${outer.w}" height="${outer.h}" fill="${getFrameColor(okantovka)}"/>`,
+      `<rect x="${inner.x}" y="${inner.y}" width="${inner.w}" height="${inner.h}" fill="${getGlassColor(glassType)}"/>`
+    ].join('');
+
+    let holes='';
+    // ВЕРХ — 4 круглых люверса
+    for(let i=0;i<4;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/3;
+        let cy = outer.y+bandWidth/2;
+        holes += `<circle cx="${cx}" cy="${cy}" r="4" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+    }
+    const rx = 7*0.65, ry = 12*0.65;
+    const rectW = rx*2, rectH = ry*2;
+
+    // БОКА — прямоугольники вертикальные
+    for(let i=0;i<3;i++) {
+        let cy = outer.y+bandWidth/2 + (i+1)*(outer.h-bandWidth)/4;
+        let xL = outer.x+bandWidth/2-rectW/2, yL = cy-rectH/2;
+        holes += `<rect x="${xL}" y="${yL}" width="${rectW}" height="${rectH}" fill="#fff" stroke="#000" stroke-width="1.7" rx="2"/>`;
+        holes += `<circle cx="${outer.x+bandWidth/2}" cy="${cy}" r="2.2" fill="#111" />`;
+        let xR = outer.x+outer.w-bandWidth/2-rectW/2, yR = cy-rectH/2;
+        holes += `<rect x="${xR}" y="${yR}" width="${rectW}" height="${rectH}" fill="#fff" stroke="#000" stroke-width="1.7" rx="2"/>`;
+        holes += `<circle cx="${outer.x+outer.w-bandWidth/2}" cy="${cy}" r="2.2" fill="#111" />`;
+    }
+    // НИЗ — крайние (возле D и С) вертикальные, средние два горизонтальные
+    for(let i=0;i<4;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/3;
+        let cy = outer.y+outer.h-bandWidth/2;
+        if(i === 0 || i === 3) {
+            // Вертикальные
+            let xB = cx-rectW/2, yB = cy-rectH/2;
+            holes += `<rect x="${xB}" y="${yB}" width="${rectW}" height="${rectH}" fill="#fff" stroke="#000" stroke-width="1.7" rx="2"/>`;
+            holes += `<circle cx="${cx}" cy="${cy}" r="2.2" fill="#111" />`;
+        } else {
+            // Горизонтальные
+            let horRectW = rectH, horRectH = rectW;
+            let xBh = cx-horRectW/2, yBh = cy-horRectH/2;
+            holes += `<rect x="${xBh}" y="${yBh}" width="${horRectW}" height="${horRectH}" fill="#fff" stroke="#000" stroke-width="1.7" rx="2"/>`;
+            holes += `<circle cx="${cx}" cy="${cy}" r="2.2" fill="#111" />`;
+        }
+    }
+
+    let sizeArrows = getSizeArrows(outer, width, height);
+
+    return `<svg id="mainSVG" width="${SVGsize}" height="${SVGsize+60}" xmlns="http://www.w3.org/2000/svg">
+        ${okantovkaRect}
+        ${lblA}${lblB}${lblC}${lblD}
+        ${holes}
+        ${sizeArrows}
+    </svg>`;
+}
+
+// 2 молнии(спираль) + французский замок (низ)
+function buildZipperFranceSVG(width=250, height=130, okantovka='brown', glassType='clear') {
+   const SVGsize = 340;
+    const bandWidth = 17;
+    const gap = 8;
+    const innerScale = 0.7;
+    const offsetX = (SVGsize-((SVGsize-gap*2) * innerScale))*0.25, offsetY = (SVGsize-((SVGsize-gap*2) * innerScale))/2;
+    const fieldW = (SVGsize - gap*2) * innerScale, fieldH = (SVGsize - gap*2) * innerScale;
+    const outer = { x: offsetX, y: offsetY, w: fieldW, h: fieldH };
+    const inner = { x: outer.x + bandWidth, y: outer.y + bandWidth, w: outer.w - bandWidth*2, h: outer.h - bandWidth*2 };
+
+    // ABCD-метки
+         let lblA = `<text x="${outer.x-15}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">A</text>`;
+    let lblB = `<text x="${outer.x+outer.w+4}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">B</text>`;
+    let lblD = `<text x="${outer.x-15}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">D</text>`;
+    let lblC = `<text x="${outer.x+outer.w+4}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">C</text>`;
+
+    let okantovkaRect = `
+      <rect x="${outer.x}" y="${outer.y}" width="${outer.w}" height="${outer.h}" fill="${getFrameColor(okantovka)}"/>
+      <rect x="${inner.x}" y="${inner.y}" width="${inner.w}" height="${inner.h}" fill="${getGlassColor(glassType)}"/>
+    `;
+
+    // --- Люверсы ---
+    // ВЕРХ — 4 круга
+    let holes='';
+    for(let i=0;i<4;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/3;
+        let cy = outer.y+bandWidth/2;
+        holes += `<circle cx="${cx}" cy="${cy}" r="4" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+    }
+    // Левый / правый — по 5 кругов
+    for(let i=0;i<5;i++) {
+        let cy = outer.y+bandWidth/2 + i*(outer.h-bandWidth)/4;
+        let cxL = outer.x+bandWidth/2, cxR = outer.x+outer.w-bandWidth/2;
+        holes += `<circle cx="${cxL}" cy="${cy}" r="4" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+        holes += `<circle cx="${cxR}" cy="${cy}" r="4" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+    }
+    // НИЗ — прямоугольники с точкой: крайние вертикальные, средние горизонтальные
+    const rx = 7*0.65, ry = 12*0.65;
+    const rectW = rx*2, rectH = ry*2;
+    for(let i=0;i<4;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/3;
+        let cy = outer.y+outer.h-bandWidth/2;
+        if(i === 0 || i === 3) {
+            // Крайние: вертикальные
+            let xB = cx-rectW/2, yB = cy-rectH/2;
+            holes += `<rect x="${xB}" y="${yB}" width="${rectW}" height="${rectH}" fill="#fff" stroke="#000" stroke-width="1.7" rx="2"/>`;
+            holes += `<circle cx="${cx}" cy="${cy}" r="2.2" fill="#111" />`;
+        } else {
+            // Средние: горизонтальные
+            let horRectW = rectH, horRectH = rectW;
+            let xBh = cx-horRectW/2, yBh = cy-horRectH/2;
+            holes += `<rect x="${xBh}" y="${yBh}" width="${horRectW}" height="${horRectH}" fill="#fff" stroke="#000" stroke-width="1.7" rx="2"/>`;
+            holes += `<circle cx="${cx}" cy="${cy}" r="2.2" fill="#111" />`;
+        }
+    }
+
+    // --- ДВЕ МОЛНИИ (спираль) ---
+   let zippers = '';
+const zipPad = 12, zipW = 8;
+const zipShift = 0.05 * inner.w;
+
+// Левая молния
+let zx1 = inner.x + zipPad;
+zippers += `<rect x="${zx1-zipW/2}" y="${inner.y}" width="${zipW}" height="${inner.h}" fill="#f6f6f7" stroke="#000" stroke-width="1.3"/>`;
+for(let z=0; z < Math.floor(inner.h/11); z++) {
+    let y = inner.y+5+z*11;
+    zippers += `<rect x="${zx1-2.2}" y="${y}" width="4.4" height="2.5" fill="#333" rx="0.9"/>`;
+}
+
+// Правая молния
+let zx2 = inner.x + inner.w - zipPad;
+zippers += `<rect x="${zx2-zipW/2}" y="${inner.y}" width="${zipW}" height="${inner.h}" fill="#f6f6f7" stroke="#000" stroke-width="1.3"/>`;
+for(let z=0; z < Math.floor(inner.h/11); z++) {
+    let y = inner.y+5+z*11;
+    zippers += `<rect x="${zx2-2.2}" y="${y}" width="5.4" height="2.5" fill="#333" rx="0.9"/>`;
+}
+
+    // --- Размерные стрелки ---
+    let sizeArrows = getSizeArrows(outer, width, height);
+
+    return `<svg id="mainSVG" width="${SVGsize}" height="${SVGsize+60}" xmlns="http://www.w3.org/2000/svg">
+        ${okantovkaRect}
+        ${lblA}${lblB}${lblC}${lblD}
+        ${holes}
+        ${zippers}
+        ${sizeArrows}
+    </svg>`;
+}
+
+// 2 молнии(тРАКТОР) + повор. скоба (низ)
+function buildZipperTractorSkobaSVG(width=250, height=130, okantovka='brown', glassType='clear') {
+      const SVGsize = 340;
+    const bandWidth = 17;
+    const gap = 8;
+    const innerScale = 0.7;
+    const offsetX = (SVGsize-((SVGsize-gap*2) * innerScale))*0.25, offsetY = (SVGsize-((SVGsize-gap*2) * innerScale))/2;
+    const fieldW = (SVGsize - gap*2) * innerScale, fieldH = (SVGsize - gap*2) * innerScale;
+    const outer = { x: offsetX, y: offsetY, w: fieldW, h: fieldH };
+    const inner = { x: outer.x + bandWidth, y: outer.y + bandWidth, w: outer.w - bandWidth*2, h: outer.h - bandWidth*2 };
+
+    // ABCD-метки
+     let lblA = `<text x="${outer.x-15}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">A</text>`;
+    let lblB = `<text x="${outer.x+outer.w+4}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">B</text>`;
+    let lblD = `<text x="${outer.x-15}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">D</text>`;
+    let lblC = `<text x="${outer.x+outer.w+4}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">C</text>`;
+
+    let okantovkaRect = `
+      <rect x="${outer.x}" y="${outer.y}" width="${outer.w}" height="${outer.h}" fill="${getFrameColor(okantovka)}"/>
+      <rect x="${inner.x}" y="${inner.y}" width="${inner.w}" height="${inner.h}" fill="${getGlassColor(glassType)}"/>
+    `;
+
+    // --- Люверсы ---
+    // ВЕРХ — 4 круга
+    let holes='';
+    for(let i=0;i<4;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/3;
+        let cy = outer.y+bandWidth/2;
+        holes += `<circle cx="${cx}" cy="${cy}" r="4" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+    }
+    // ЛЕВО/ПРАВО — по 5 КРУГОВ!
+    for(let i=0;i<5;i++) {
+        let cy = outer.y+bandWidth/2 + i*(outer.h-bandWidth)/4;
+        let cxL = outer.x+bandWidth/2, cxR = outer.x+outer.w-bandWidth/2;
+        holes += `<circle cx="${cxL}" cy="${cy}" r="4" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+        holes += `<circle cx="${cxR}" cy="${cy}" r="4" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+    }
+    // НИЗ — 4 овала (скобы): крайние вертикальные, средние горизонтальные
+    const rx = 7*0.65, ry = 12*0.65;
+    for(let i=0;i<4;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/3;
+        let cy = outer.y+outer.h-bandWidth/2;
+        if(i === 0 || i === 3) {
+            holes += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+        } else {
+            holes += `<ellipse cx="${cx}" cy="${cy}" rx="${ry}" ry="${rx}" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+        }
+    }
+
+    // --- ДВЕ МОЛНИИ (трактор) ---
+    let zippers = '';
+    // большее смещение к центру: было 10, теперь +5% от ширины внутреннего поля
+    const zipPadBase = 8, zipW = 12;
+    const zipShift = 0.03 * inner.w; // 5% смещение внутрь
+    // Левая молния
+    let zx1 = inner.x+zipPadBase+zipShift;
+    zippers += `<rect x="${zx1-zipW/2}" y="${inner.y}" width="${zipW}" height="${inner.h}" fill="#eaeaea" stroke="#333" stroke-width="2"/>`;
+    // Прорисовка зубьев
+    for(let z=0;z< Math.floor(inner.h/12); z++) {
+        let y = inner.y+6+z*12;
+        zippers += `<rect x="${zx1-3}" y="${y-3}" width="6" height="6" fill="#606060" rx="1.2"/>`;
+        zippers += `<rect x="${zx1-6}" y="${y}" width="12" height="2.2" fill="#333" />`;
+    }
+    // Правая молния
+    let zx2 = inner.x+inner.w-zipPadBase-zipShift;
+    zippers += `<rect x="${zx2-zipW/2}" y="${inner.y}" width="${zipW}" height="${inner.h}" fill="#eaeaea" stroke="#333" stroke-width="2"/>`;
+    for(let z=0;z< Math.floor(inner.h/12); z++) {
+        let y = inner.y+6+z*12;
+        zippers += `<rect x="${zx2-3}" y="${y-3}" width="6" height="6" fill="#606060" rx="1.2"/>`;
+        zippers += `<rect x="${zx2-6}" y="${y}" width="12" height="2.2" fill="#333" />`;
+    }
+
+    // --- Размерные стрелки ---
+    let sizeArrows = getSizeArrows(outer, width, height);
+
+    return `<svg id="mainSVG" width="${SVGsize}" height="${SVGsize+60}" xmlns="http://www.w3.org/2000/svg">
+        ${okantovkaRect}
+        ${lblA}${lblB}${lblC}${lblD}
+        ${holes}
+        ${zippers}
+        ${sizeArrows}
+    </svg>`;
+}
+
+// 2 молнии(трактор) + французский замок (низ)
+function buildZipperTractorFranceSVG(width=250, height=130, okantovka='brown', glassType='clear') {
+    const SVGsize = 340;
+    const bandWidth = 17;
+    const gap = 8;
+    const innerScale = 0.7;
+    const offsetX = (SVGsize-((SVGsize-gap*2) * innerScale))*0.25, offsetY = (SVGsize-((SVGsize-gap*2) * innerScale))/2;
+    const fieldW = (SVGsize - gap*2) * innerScale, fieldH = (SVGsize - gap*2) * innerScale;
+    const outer = { x: offsetX, y: offsetY, w: fieldW, h: fieldH };
+    const inner = { x: outer.x + bandWidth, y: outer.y + bandWidth, w: outer.w - bandWidth*2, h: outer.h - bandWidth*2 };
+
+    // ABCD labels
+     let lblA = `<text x="${outer.x-15}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">A</text>`;
+    let lblB = `<text x="${outer.x+outer.w+4}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">B</text>`;
+    let lblD = `<text x="${outer.x-15}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">D</text>`;
+    let lblC = `<text x="${outer.x+outer.w+4}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">C</text>`;
+
+    let okantovkaRect = `
+      <rect x="${outer.x}" y="${outer.y}" width="${outer.w}" height="${outer.h}" fill="${getFrameColor(okantovka)}"/>
+      <rect x="${inner.x}" y="${inner.y}" width="${inner.w}" height="${inner.h}" fill="${getGlassColor(glassType)}"/>
+    `;
+
+    // --- Люверсы ---
+    // ВЕРХ — 4 круга
+    let holes='';
+    for(let i=0;i<4;i++) {
+        let cx = outer.x + bandWidth/2 + i*(outer.w-bandWidth)/3;
+        let cy = outer.y + bandWidth/2;
+        holes += `<circle cx="${cx}" cy="${cy}" r="4" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+    }
+    // ЛЕВО/ПРАВО — по 5 кругов!
+    for(let i=0;i<5;i++) {
+        let cy = outer.y + bandWidth/2 + i*(outer.h-bandWidth)/4;
+        let cxL = outer.x+bandWidth/2, cxR = outer.x+outer.w-bandWidth/2;
+        holes += `<circle cx="${cxL}" cy="${cy}" r="4" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+        holes += `<circle cx="${cxR}" cy="${cy}" r="4" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+    }
+
+    // --- НИЗ — французский замок (прямоугольники с точкой) ---
+    const rx = 7*0.65, ry = 12*0.65;
+    const rectW = rx*2, rectH = ry*2;
+    for(let i=0;i<4;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/3;
+        let cy = outer.y+outer.h-bandWidth/2;
+        if(i === 0 || i === 3) {
+            // Крайние вертикальные
+            let xB = cx-rectW/2, yB = cy-rectH/2;
+            holes += `<rect x="${xB}" y="${yB}" width="${rectW}" height="${rectH}" fill="#fff" stroke="#000" stroke-width="1.7" rx="2"/>`;
+            holes += `<circle cx="${cx}" cy="${cy}" r="2.2" fill="#111" />`;
+        } else {
+            // Средние горизонтальные
+            let horRectW = rectH, horRectH = rectW;
+            let xBh = cx-horRectW/2, yBh = cy-horRectH/2;
+            holes += `<rect x="${xBh}" y="${yBh}" width="${horRectW}" height="${horRectH}" fill="#fff" stroke="#000" stroke-width="1.7" rx="2"/>`;
+            holes += `<circle cx="${cx}" cy="${cy}" r="2.2" fill="#111" />`;
+        }
+    }
+
+   let zippers = '';
+    // большее смещение к центру: было 10, теперь +5% от ширины внутреннего поля
+    const zipPadBase = 8, zipW = 12;
+    const zipShift = 0.03 * inner.w; // 5% смещение внутрь
+    // Левая молния
+    let zx1 = inner.x+zipPadBase+zipShift;
+    zippers += `<rect x="${zx1-zipW/2}" y="${inner.y}" width="${zipW}" height="${inner.h}" fill="#eaeaea" stroke="#333" stroke-width="2"/>`;
+    // Прорисовка зубьев
+    for(let z=0;z< Math.floor(inner.h/12); z++) {
+        let y = inner.y+6+z*12;
+        zippers += `<rect x="${zx1-3}" y="${y-3}" width="6" height="6" fill="#606060" rx="1.2"/>`;
+        zippers += `<rect x="${zx1-6}" y="${y}" width="12" height="2.2" fill="#333" />`;
+    }
+    // Правая молния
+    let zx2 = inner.x+inner.w-zipPadBase-zipShift;
+    zippers += `<rect x="${zx2-zipW/2}" y="${inner.y}" width="${zipW}" height="${inner.h}" fill="#eaeaea" stroke="#333" stroke-width="2"/>`;
+    for(let z=0;z< Math.floor(inner.h/12); z++) {
+        let y = inner.y+6+z*12;
+        zippers += `<rect x="${zx2-3}" y="${y-3}" width="6" height="6" fill="#606060" rx="1.2"/>`;
+        zippers += `<rect x="${zx2-6}" y="${y}" width="12" height="2.2" fill="#333" />`;
+    }
+
+    // --- Размерные стрелки ---
+    let sizeArrows = getSizeArrows(outer, width, height);
+
+    return `<svg id="mainSVG" width="${SVGsize}" height="${SVGsize+60}" xmlns="http://www.w3.org/2000/svg">
+        ${okantovkaRect}
+        ${lblA}${lblB}${lblC}${lblD}
+        ${holes}
+        ${zippers}
+        ${sizeArrows}
+    </svg>`;
+}
+
+// 2 молнии(СПИРАЛЬ) + поворотная скоба (низ)
+function buildZipperSpiralSkobaSVG(width=250, height=130, okantovka='brown', glassType='clear') {
+   const SVGsize = 340;
+    const bandWidth = 17;
+    const gap = 8;
+    const innerScale = 0.7;
+    const offsetX = (SVGsize-((SVGsize-gap*2) * innerScale))*0.25, offsetY = (SVGsize-((SVGsize-gap*2) * innerScale))/2;
+    const fieldW = (SVGsize - gap*2) * innerScale, fieldH = (SVGsize - gap*2) * innerScale;
+    const outer = { x: offsetX, y: offsetY, w: fieldW, h: fieldH };
+    const inner = { x: outer.x + bandWidth, y: outer.y + bandWidth, w: outer.w - bandWidth*2, h: outer.h - bandWidth*2 };
+
+    // ABCD-метки
+        let lblA = `<text x="${outer.x-15}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">A</text>`;
+    let lblB = `<text x="${outer.x+outer.w+4}" y="${outer.y-2}" font-size="8" fill="#222" font-weight="bold">B</text>`;
+    let lblD = `<text x="${outer.x-15}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">D</text>`;
+    let lblC = `<text x="${outer.x+outer.w+4}" y="${outer.y+outer.h+10}" font-size="8" fill="#222" font-weight="bold">C</text>`;
+
+    let okantovkaRect = `
+      <rect x="${outer.x}" y="${outer.y}" width="${outer.w}" height="${outer.h}" fill="${getFrameColor(okantovka)}"/>
+      <rect x="${inner.x}" y="${inner.y}" width="${inner.w}" height="${inner.h}" fill="${getGlassColor(glassType)}"/>
+    `;
+
+    // --- Люверсы ---
+    // Верх — 4 круга
+    let holes='';
+    for(let i=0;i<4;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/3;
+        let cy = outer.y+bandWidth/2;
+        holes += `<circle cx="${cx}" cy="${cy}" r="4" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+    }
+    // Левый / правый — по 5 кругов
+    for(let i=0;i<5;i++) {
+        let cy = outer.y+bandWidth/2 + i*(outer.h-bandWidth)/4;
+        let cxL = outer.x+bandWidth/2, cxR = outer.x+outer.w-bandWidth/2;
+        holes += `<circle cx="${cxL}" cy="${cy}" r="4" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+        holes += `<circle cx="${cxR}" cy="${cy}" r="4" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+    }
+    // Низ — 4 ОВАЛА (как у окна-поворотные скобы)
+    const rx = 7*0.65, ry = 12*0.65;
+    for(let i=0;i<4;i++) {
+        let cx = outer.x+bandWidth/2 + i*(outer.w-bandWidth)/3;
+        let cy = outer.y+outer.h-bandWidth/2;
+        if(i === 0 || i === 3) {
+            holes += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+        } else {
+            holes += `<ellipse cx="${cx}" cy="${cy}" rx="${ry}" ry="${rx}" fill="#fff" stroke="#000" stroke-width="1.7"/>`;
+        }
+    }
+
+    // --- ДВЕ МОЛНИИ (спираль) ---
+   let zippers = '';
+const zipPad = 12, zipW = 8;
+
+// Левая
+let zx1 = inner.x+zipPad;
+zippers += `<rect x="${zx1-zipW/2}" y="${inner.y}" width="${zipW}" height="${inner.h}" fill="#f6f6f7" stroke="#000" stroke-width="1.3"/>`;
+// Имитация спирали — зигзагообразная "молния" (тонкая полоса, тёмно-серая)
+for(let z=0;z< Math.floor(inner.h/11); z++) {
+    let y = inner.y+5+z*11;
+    zippers += `<rect x="${zx1-2.2}" y="${y}" width="4.4" height="2.5" fill="#333" rx="0.9"/>`;
+}
+
+// Правая
+let zx2 = inner.x+inner.w-zipPad;
+zippers += `<rect x="${zx2-zipW/2}" y="${inner.y}" width="${zipW}" height="${inner.h}" fill="#f6f6f7" stroke="#000" stroke-width="1.3"/>`;
+for(let z=0;z< Math.floor(inner.h/11); z++) {
+    let y = inner.y+5+z*11;
+    zippers += `<rect x="${zx2-2.2}" y="${y}" width="4.4" height="2.5" fill="#333" rx="0.9"/>`;
+}
+    // --- Размерные стрелки ---
+    let sizeArrows = getSizeArrows(outer, width, height);
+
+    return `<svg id="mainSVG" width="${SVGsize}" height="${SVGsize+60}" xmlns="http://www.w3.org/2000/svg">
+        ${okantovkaRect}
+        ${lblA}${lblB}${lblC}${lblD}
+        ${holes}
+        ${zippers}
+        ${sizeArrows}
+    </svg>`;
+}
+
+// ==== Универсальный "визуализатор" ====
+function showSVGVisualization() {
+    const productType = document.getElementById('prodType').value; 
+    const openingType = document.getElementById('openingType').value;
+    // Конвертируем К ОДНОМУ из [white, beige, brown, gray, black]!
+    const color = reverseRu('color', document.getElementById('color').value) || "brown";
+    let glass = document.getElementById('glass').value || "transparent";
+    if (glass === "Прозрачное") glass = "transparent";
+    if (glass === "Тонированное") glass = "tinted";
+    const width = parseFloat(document.getElementById('width').value) || 0;
+    const height = parseFloat(document.getElementById('height').value) || 0;
+    let svg = '';
+    if(productType === "door") {
+        if(openingType === "1 молния(спираль) по центру + люверсы 10 мм")
+          svg = buildDoorZipperCenterSpiralSVG(width, height, color, glass);
+        else if(openingType === "1 молния(трактор) по центру + люверсы 10 мм")
+          svg = buildDoorZipperCenterTraktorSVG(width, height, color, glass);
+        else if(openingType === "2 молнии(спираль) + люверсы 10 мм")
+          svg = buildDoorZipperSpiralSVG(width, height, color, glass);
+        else if(openingType === "2 молнии(трактор) + люверсы 10 мм")
+          svg = buildDoorZipperTraktorSVG(width, height, color, glass);
+    } else if(productType === "window") {
+        if(openingType==="Поворотные скобы (пластик)")
+          svg=buildSkobaSVG(width,height,color,glass);
+        else if(openingType==="Глухое (без открывания)")
+          svg=buildGluhSVG(width,height,color,glass);
+        else if(openingType==="Французский замок (металл)")
+          svg=buildFranceSVG(width,height,color,glass);
+        else if(openingType==="2 молнии(спираль) + французский замок (низ)")
+          svg=buildZipperFranceSVG(width,height,color,glass);
+        else if(openingType==="2 молнии(спираль) + поворотная скоба (низ)")
+          svg=buildZipperSpiralSkobaSVG(width,height,color,glass);
+        else if(openingType==="2 молнии(трактор) + французский замок (низ)")
+          svg=buildZipperTractorFranceSVG(width,height,color,glass);
+        else if(openingType==="2 молнии(трактор) + поворотная скоба (низ)")
+          svg=buildZipperTractorSkobaSVG(width,height,color,glass);
+    }
+    // ВСТАВЬ SVG c width="100%" height="100%" для корректного встраивания
+    if(svg && svg.includes('<svg')) {
+      document.getElementById('svgPreview').innerHTML = 
+  svg.replace('<svg ', '<svg width="100%" height="100%" ');
+    } else {
+      document.getElementById('svgPreview').innerHTML = '';
+    }
+}
+window.addEventListener('DOMContentLoaded', showSVGVisualization);
+function svgStringToPngDataUrl(svgString, width=340, height=340) {
+  return new Promise((resolve) => {
+    let img = new Image();
+    img.onload = () => {
+      let canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      let ctx = canvas.getContext('2d');
+      ctx.fillStyle = "#FFF";
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
+  });
+}
+function priceModalClose(e) {
+    if(!e || !e.target || e.target === document.getElementById('priceModal'))
+        document.getElementById('priceModal').style.display = 'none';
+}
+
+// == Автоинициализация полей формы калькулятора ==
+window.addEventListener('DOMContentLoaded', function() {
+  [
+    'height','width','matOk','openingType','moskit','pocket','glass',
+    'color','extraLock','extraLockCount','extraZipper','extraZipperLen','install','extraWorkPrice'
+  ].forEach(id=>{
+    let el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', autoCalculate);
+      el.addEventListener('input', autoCalculate);
+    }
+  });
+  if (document.getElementById('addToOrderBtn')) {
+    document.getElementById('addToOrderBtn').onclick = addToOrderTable;
+  }
+  if (document.getElementById('editOrderBtn')) {
+    document.getElementById('editOrderBtn').onclick = editOrderTable;
+  }
+  if (document.getElementById('saveOrderBtn')) {
+    document.getElementById('saveOrderBtn').onclick = saveOrderTable;
+  }
+   ['prodType','openingType','width','height','color','glass'].forEach(id=>{
+  let el=document.getElementById(id);
+  if(el) el.addEventListener('change', showSVGVisualization);
+  if(el && el.type==="number") el.addEventListener('input', showSVGVisualization);
+});
+window.addEventListener('DOMContentLoaded', showSVGVisualization);
+  autoCalculate();
+  renderOrderTable();
+});
+</script>

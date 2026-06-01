@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  orders    Order[]
+  clients   Client[]
+  priceList PriceList?
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  userId    String
+  fio       String
+  phone     String?
+  address   String?
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders    Order[]
+
+  @@index([userId])
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  userId    String
+  clientId  String?
+  orderNum  Int
+  status    String      @default("novy")
+  track     String?
+  logistic  String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client    Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  items     OrderItem[]
+
+  @@index([userId])
+  @@index([clientId])
+}
+
+model OrderItem {
+  id              String  @id @default(cuid())
+  orderId         String
+  prodType        String
+  material        String
+  color           String
+  glass           String
+  opening         String
+  width           Int
+  height          Int
+  moskit          Boolean @default(false)
+  pocket          Boolean @default(false)
+  install         Boolean @default(false)
+  extraLockType   String?
+  extraLockCount  Int?
+  extraZipperType String?
+  extraZipperLen  Int?
+  extraWorkPrice  Float?
+  extraWorkDesc   String?
+  materialCost    Float?
+  fittingsCost    Float?
+  moskitCost      Float?
+  pocketCost      Float?
+  extraLockCost   Float?
+  extraZipperCost Float?
+  glassSurcharge  Float?
+  installCost     Float?
+  totalPrice      Float?
+  order           Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+model PriceList {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  materialPvc        Float    @default(950)
+  materialScreen     Float    @default(1250)
+  materialOxford     Float    @default(1150)
+  moskit             Float    @default(680)
+  pocket             Float    @default(380)
+  extraLockRotary    Float    @default(60)
+  extraLockFrench    Float    @default(120)
+  extraZipperSpiral  Float    @default(340)
+  extraZipperTractor Float    @default(540)
+  glassTint          Float    @default(3)
+  install            Float    @default(200)
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

@@ -1,0 +1,45 @@
+import 'dotenv/config';
+import express, { Request, Response, NextFunction } from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
+import authRouter from './routes/auth';
+
+const REQUIRED_ENV = ['DATABASE_URL', 'JWT_SECRET'] as const;
+for (const key of REQUIRED_ENV) {
+  if (!process.env[key]) {
+    console.error(`FATAL: missing env variable ${key}`);
+    process.exit(1);
+  }
+}
+
+const app = express();
+const PORT = parseInt(process.env.PORT ?? '3001', 10);
+
+app.use(helmet());
+app.use(cors({ origin: ['http://127.0.0.1:5173', 'http://localhost:5173'], credentials: true }));
+app.use(express.json());
+
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Слишком много запросов, подождите минуту' },
+});
+
+app.use('/api/auth', authLimiter, authRouter);
+
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, ts: new Date().toISOString() });
+});
+
+// Global error handler — always return JSON, never leak stack traces
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error(err);
+  res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+});
+
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`Backend: http://127.0.0.1:${PORT}`);
+});
