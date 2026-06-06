@@ -5,18 +5,21 @@ import { checkAuth, AuthRequest } from '../middleware/checkAuth';
 
 const router = Router();
 
+const MAX_PRICE = 999_999;
+
 const PriceListSchema = z.object({
-  materialPvc:        z.number().positive(),
-  materialScreen:     z.number().positive(),
-  materialOxford:     z.number().positive(),
-  moskit:             z.number().positive(),
-  pocket:             z.number().positive(),
-  extraLockRotary:    z.number().positive(),
-  extraLockFrench:    z.number().positive(),
-  extraZipperSpiral:  z.number().positive(),
-  extraZipperTractor: z.number().positive(),
-  glassTint:          z.number().positive(),
-  install:            z.number().positive(),
+  materialPvc:        z.number().positive().max(MAX_PRICE),
+  materialScreen:     z.number().positive().max(MAX_PRICE),
+  materialOxford:     z.number().positive().max(MAX_PRICE),
+  materialFabric:     z.number().positive().max(MAX_PRICE),
+  moskit:             z.number().positive().max(MAX_PRICE),
+  pocket:             z.number().positive().max(MAX_PRICE),
+  extraLockRotary:    z.number().positive().max(MAX_PRICE),
+  extraLockFrench:    z.number().positive().max(MAX_PRICE),
+  extraZipperSpiral:  z.number().positive().max(MAX_PRICE),
+  extraZipperTractor: z.number().positive().max(MAX_PRICE),
+  glassTint:          z.number().positive().max(100),
+  install:            z.number().positive().max(MAX_PRICE),
 });
 
 router.get('/prices', checkAuth, async (req: AuthRequest, res: Response): Promise<void> => {

@@ -47,6 +47,7 @@ model Order {
   client    Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
   items     OrderItem[]
 
+  @@unique([userId, orderNum])
   @@index([userId])
   @@index([clientId])
 }
@@ -95,6 +96,7 @@ model PriceList {
   materialPvc        Float    @default(950)
   materialScreen     Float    @default(1250)
   materialOxford     Float    @default(1150)
+  materialFabric     Float    @default(1100)
   moskit             Float    @default(680)
   pocket             Float    @default(380)
   extraLockRotary    Float    @default(60)

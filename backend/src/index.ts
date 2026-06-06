@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import 'express-async-errors';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -18,9 +19,22 @@ for (const key of REQUIRED_ENV) {
 const app = express();
 const PORT = parseInt(process.env.PORT ?? '3001', 10);
 
+const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'http://127.0.0.1:5173,http://localhost:5173')
+  .split(',')
+  .map(o => o.trim());
+
 app.use(helmet());
-app.use(cors({ origin: ['http://127.0.0.1:5173', 'http://localhost:5173'], credentials: true }));
-app.use(express.json());
+app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(express.json({ limit: '64kb' }));
+
+// Глобальный лимит — защита от флуда на любой эндпоинт
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 300,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Слишком много запросов' },
+});
 
 const authLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -30,6 +44,7 @@ const authLimiter = rateLimit({
   message: { error: 'Слишком много запросов, подождите минуту' },
 });
 
+app.use(globalLimiter);
 app.use('/api/auth', authLimiter, authRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/orders', ordersRouter);

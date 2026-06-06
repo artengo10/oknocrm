@@ -4,7 +4,9 @@ import {
   type OrderDto, type OrderItemDto,
 } from '../api/orders';
 import { useConstructorStore } from './constructorStore';
-import { calculateCost, DEFAULT_PRICES } from '../lib/calculator';
+import { useSettingsStore } from './settingsStore';
+import { useTableStore } from './tableStore';
+import { calculateCost } from '../lib/calculator';
 import type { ProdType, Material, FrameColor, GlassType, ExtraLockType, ExtraZipperType } from '../lib/calculator';
 import type { ShapeType } from './constructorStore';
 
@@ -39,6 +41,7 @@ function itemToConstructor(item: OrderItemDto) {
   cs.setField('extraLockCount', item.extraLockCount ?? 1);
   cs.setField('extraZipperType', (item.extraZipperType ?? 'none') as ExtraZipperType);
   cs.setField('extraZipperLen', item.extraZipperLen ?? 100);
+  cs.setField('extraWorkPrice', item.extraWorkPrice ?? 0);
   cs.setField('okantovkaTop', item.okantovkaTop);
   cs.setField('okantovkaBottom', item.okantovkaBottom);
   cs.setField('okantovkaLeft', item.okantovkaLeft);
@@ -47,7 +50,8 @@ function itemToConstructor(item: OrderItemDto) {
 
 function constructorToItem(): Omit<OrderItemDto, 'id'> {
   const s = useConstructorStore.getState();
-  const result = calculateCost(s.toCalcInput(), DEFAULT_PRICES);
+  const prices = useSettingsStore.getState().prices;
+  const result = calculateCost(s.toCalcInput(), prices);
   return {
     prodType: s.prodType,
     shape: s.shape,
@@ -64,6 +68,8 @@ function constructorToItem(): Omit<OrderItemDto, 'id'> {
     extraLockCount: s.extraLockType !== 'none' ? s.extraLockCount : null,
     extraZipperType: s.extraZipperType !== 'none' ? s.extraZipperType : null,
     extraZipperLen:  s.extraZipperType !== 'none' ? s.extraZipperLen : null,
+    extraWorkPrice: s.extraWorkPrice || null,
+    extraWorkDesc:  null,
     okantovkaTop: s.okantovkaTop,
     okantovkaBottom: s.okantovkaBottom,
     okantovkaLeft: s.okantovkaLeft,
@@ -79,10 +85,10 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
 
   fetchOrders: async () => {
     set({ loading: true });
+    useSettingsStore.getState().fetchPrices();
     try {
       const orders = await apiGetOrders();
       set({ orders, loading: false });
-      // auto-select first order if none active
       const { activeOrderId } = get();
       if (!activeOrderId && orders.length > 0) {
         get().selectOrder(orders[0].id);
@@ -115,6 +121,7 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
       const { orders, activeOrderId } = get();
       const next = orders.filter((o) => o.id !== id);
       set({ orders: next });
+      useTableStore.getState().clearOrder(id);
       if (activeOrderId === id && next.length > 0) {
         get().selectOrder(next[0].id);
       }

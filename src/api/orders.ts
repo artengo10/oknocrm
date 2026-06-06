@@ -17,6 +17,8 @@ export interface OrderItemDto {
   extraLockCount: number | null;
   extraZipperType: string | null;
   extraZipperLen: number | null;
+  extraWorkPrice: number | null;
+  extraWorkDesc: string | null;
   okantovkaTop: number;
   okantovkaBottom: number;
   okantovkaLeft: number;

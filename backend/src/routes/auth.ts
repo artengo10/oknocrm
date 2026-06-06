@@ -39,36 +39,37 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
   }
 
   const hash = await bcrypt.hash(password, 10);
-  const user = await prisma.user.create({
-    data: { email, password: hash, priceList: { create: {} } },
-  });
-
-  // Auto-create first order with default item
-  await prisma.order.create({
-    data: {
-      userId: user.id,
-      orderNum: 1,
-      status: 'novy',
-      items: {
-        create: {
-          prodType: 'window',
-          shape: 'rect',
-          material: 'pvc',
-          color: 'brown',
-          glass: 'clear',
-          opening: 'Поворотные скобы (пластик)',
-          width: 150,
-          height: 200,
-          moskit: false,
-          pocket: false,
-          install: false,
-          okantovkaTop: 70,
-          okantovkaBottom: 70,
-          okantovkaLeft: 70,
-          okantovkaRight: 70,
+  const user = await prisma.$transaction(async (tx) => {
+    const u = await tx.user.create({
+      data: { email, password: hash, priceList: { create: {} } },
+    });
+    await tx.order.create({
+      data: {
+        userId: u.id,
+        orderNum: 1,
+        status: 'novy',
+        items: {
+          create: {
+            prodType: 'window',
+            shape: 'rect',
+            material: 'pvc',
+            color: 'brown',
+            glass: 'clear',
+            opening: 'Поворотные скобы (пластик)',
+            width: 150,
+            height: 200,
+            moskit: false,
+            pocket: false,
+            install: false,
+            okantovkaTop: 70,
+            okantovkaBottom: 70,
+            okantovkaLeft: 70,
+            okantovkaRight: 70,
+          },
         },
       },
-    },
+    });
+    return u;
   });
 
   const token = signToken(user.id);

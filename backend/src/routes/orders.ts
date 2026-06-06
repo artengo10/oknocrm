@@ -6,39 +6,87 @@ import { checkAuth, AuthRequest } from '../middleware/checkAuth';
 const router = Router();
 router.use(checkAuth);
 
+const PROD_TYPES    = ['window', 'door'] as const;
+const SHAPES        = ['rect', 'square', 'arch', 'triangle'] as const;
+const MATERIALS     = ['pvc', 'screen', 'oxford', 'fabric'] as const;
+const COLORS        = ['brown', 'white', 'gray', 'beige', 'black', 'blue'] as const;
+const GLASS_TYPES   = ['clear', 'tinted'] as const;
+const STATUSES      = ['novy', 'v_rabote', 'gotov', 'otgr'] as const;
+
 const ItemSchema = z.object({
-  prodType:       z.string(),
-  shape:          z.string(),
-  material:       z.string(),
-  color:          z.string(),
-  glass:          z.string(),
-  opening:        z.string(),
-  width:          z.number().int().min(1),
-  height:         z.number().int().min(1),
-  moskit:         z.boolean(),
-  pocket:         z.boolean(),
-  install:        z.boolean(),
-  extraLockType:  z.string().nullable().optional(),
-  extraLockCount: z.number().int().nullable().optional(),
-  extraZipperType:z.string().nullable().optional(),
-  extraZipperLen: z.number().int().nullable().optional(),
-  okantovkaTop:   z.number().int().min(0),
-  okantovkaBottom:z.number().int().min(0),
-  okantovkaLeft:  z.number().int().min(0),
-  okantovkaRight: z.number().int().min(0),
-  totalPrice:     z.number().nullable().optional(),
+  prodType:        z.enum(PROD_TYPES),
+  shape:           z.enum(SHAPES),
+  material:        z.enum(MATERIALS),
+  color:           z.enum(COLORS),
+  glass:           z.enum(GLASS_TYPES),
+  opening:         z.string().min(1).max(120),
+  width:           z.number().int().min(1).max(2000),
+  height:          z.number().int().min(1).max(2000),
+  moskit:          z.boolean(),
+  pocket:          z.boolean(),
+  install:         z.boolean(),
+  extraLockType:   z.string().max(40).nullable().optional(),
+  extraLockCount:  z.number().int().min(0).max(100).nullable().optional(),
+  extraZipperType: z.string().max(40).nullable().optional(),
+  extraZipperLen:  z.number().int().min(0).max(5000).nullable().optional(),
+  okantovkaTop:    z.number().int().min(0).max(500),
+  okantovkaBottom: z.number().int().min(0).max(500),
+  okantovkaLeft:   z.number().int().min(0).max(500),
+  okantovkaRight:  z.number().int().min(0).max(500),
+  extraWorkPrice:  z.number().min(0).max(9_999_999).nullable().optional(),
+  extraWorkDesc:   z.string().max(500).nullable().optional(),
+  totalPrice:      z.number().min(0).max(9_999_999).nullable().optional(),
 });
 
-function serializeOrder(order: any) {
-  const item = order.items?.[0] ?? null;
+const StatusSchema = z.object({
+  status: z.enum(STATUSES),
+});
+
+interface OrderItemRow {
+  id: string;
+  prodType: string;
+  shape: string;
+  material: string;
+  color: string;
+  glass: string;
+  opening: string;
+  width: number;
+  height: number;
+  moskit: boolean;
+  pocket: boolean;
+  install: boolean;
+  extraLockType: string | null;
+  extraLockCount: number | null;
+  extraZipperType: string | null;
+  extraZipperLen: number | null;
+  extraWorkPrice: number | null;
+  extraWorkDesc: string | null;
+  okantovkaTop: number;
+  okantovkaBottom: number;
+  okantovkaLeft: number;
+  okantovkaRight: number;
+  totalPrice: number | null;
+}
+
+interface OrderRow {
+  id: string;
+  orderNum: number;
+  status: string;
+  createdAt: Date;
+  clientId: string | null;
+  items: OrderItemRow[];
+}
+
+function serializeOrder(order: OrderRow) {
+  const item = order.items[0] ?? null;
   return {
-    id: order.id,
-    orderNum: order.orderNum,
-    status: order.status,
+    id:        order.id,
+    orderNum:  order.orderNum,
+    status:    order.status,
     createdAt: order.createdAt,
-    clientId: order.clientId ?? null,
+    clientId:  order.clientId ?? null,
     item: item ? {
-      id: item.id,
+      id:              item.id,
       prodType:        item.prodType,
       shape:           item.shape,
       material:        item.material,
@@ -54,6 +102,8 @@ function serializeOrder(order: any) {
       extraLockCount:  item.extraLockCount,
       extraZipperType: item.extraZipperType,
       extraZipperLen:  item.extraZipperLen,
+      extraWorkPrice:  item.extraWorkPrice,
+      extraWorkDesc:   item.extraWorkDesc,
       okantovkaTop:    item.okantovkaTop,
       okantovkaBottom: item.okantovkaBottom,
       okantovkaLeft:   item.okantovkaLeft,
@@ -66,7 +116,7 @@ function serializeOrder(order: any) {
 // GET /api/orders — list all orders for the user
 router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
   const orders = await prisma.order.findMany({
-    where: { userId: req.userId! },
+    where:   { userId: req.userId! },
     include: { items: { take: 1 } },
     orderBy: { orderNum: 'asc' },
   });
@@ -76,34 +126,25 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
 // POST /api/orders — create a new order
 router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
   const last = await prisma.order.findFirst({
-    where: { userId: req.userId! },
+    where:   { userId: req.userId! },
     orderBy: { orderNum: 'desc' },
-    select: { orderNum: true },
+    select:  { orderNum: true },
   });
   const nextNum = (last?.orderNum ?? 0) + 1;
 
   const order = await prisma.order.create({
     data: {
-      userId: req.userId!,
+      userId:   req.userId!,
       orderNum: nextNum,
-      status: 'novy',
+      status:   'novy',
       items: {
         create: {
-          prodType: 'window',
-          shape: 'rect',
-          material: 'pvc',
-          color: 'brown',
-          glass: 'clear',
+          prodType: 'window', shape: 'rect', material: 'pvc',
+          color: 'brown', glass: 'clear',
           opening: 'Поворотные скобы (пластик)',
-          width: 150,
-          height: 200,
-          moskit: false,
-          pocket: false,
-          install: false,
-          okantovkaTop: 70,
-          okantovkaBottom: 70,
-          okantovkaLeft: 70,
-          okantovkaRight: 70,
+          width: 150, height: 200,
+          moskit: false, pocket: false, install: false,
+          okantovkaTop: 70, okantovkaBottom: 70, okantovkaLeft: 70, okantovkaRight: 70,
         },
       },
     },
@@ -115,21 +156,20 @@ router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
 
 // PATCH /api/orders/:id/status — update order status
 router.patch('/:id/status', async (req: AuthRequest, res: Response): Promise<void> => {
-  const orderId = req.params['id'] as string;
-  const { status } = req.body as { status: string };
-  const allowed = ['novy', 'v_rabote', 'gotov', 'otgr'];
-  if (!allowed.includes(status)) {
+  const parsed = StatusSchema.safeParse(req.body);
+  if (!parsed.success) {
     res.status(400).json({ error: 'Недопустимый статус' });
     return;
   }
+  const orderId = req.params['id'] as string;
   const order = await prisma.order.findFirst({
     where: { id: orderId, userId: req.userId! },
-    include: { items: { take: 1 } },
-  }) as any;
+  });
   if (!order) { res.status(404).json({ error: 'Заказ не найден' }); return; }
+
   const updated = await prisma.order.update({
-    where: { id: orderId },
-    data: { status },
+    where:   { id: orderId },
+    data:    { status: parsed.data.status },
     include: { items: { take: 1 } },
   });
   res.json({ order: serializeOrder(updated) });
@@ -139,9 +179,9 @@ router.patch('/:id/status', async (req: AuthRequest, res: Response): Promise<voi
 router.put('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
   const orderId = req.params['id'] as string;
   const order = await prisma.order.findFirst({
-    where: { id: orderId, userId: req.userId! },
+    where:   { id: orderId, userId: req.userId! },
     include: { items: { take: 1 } },
-  }) as any;
+  });
   if (!order) {
     res.status(404).json({ error: 'Заказ не найден' });
     return;
@@ -154,27 +194,17 @@ router.put('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
   }
   const data = parsed.data;
 
-  let updated;
-  if (order.items[0]) {
-    updated = await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        items: {
-          update: {
-            where: { id: order.items[0].id },
-            data,
-          },
-        },
-      },
-      include: { items: { take: 1 } },
-    });
-  } else {
-    updated = await prisma.order.update({
-      where: { id: order.id },
-      data: { items: { create: data } },
-      include: { items: { take: 1 } },
-    });
-  }
+  const updated = order.items[0]
+    ? await prisma.order.update({
+        where: { id: order.id },
+        data:  { items: { update: { where: { id: order.items[0].id }, data } } },
+        include: { items: { take: 1 } },
+      })
+    : await prisma.order.update({
+        where: { id: order.id },
+        data:  { items: { create: data } },
+        include: { items: { take: 1 } },
+      });
 
   res.json({ order: serializeOrder(updated) });
 });
@@ -182,15 +212,14 @@ router.put('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
 // DELETE /api/orders/:id
 router.delete('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
   const orderId = req.params['id'] as string;
-  const order = await prisma.order.findFirst({
-    where: { id: orderId, userId: req.userId! },
-  });
+  const [order, count] = await Promise.all([
+    prisma.order.findFirst({ where: { id: orderId, userId: req.userId! } }),
+    prisma.order.count({ where: { userId: req.userId! } }),
+  ]);
   if (!order) {
     res.status(404).json({ error: 'Заказ не найден' });
     return;
   }
-  // Don't allow deleting the last order
-  const count = await prisma.order.count({ where: { userId: req.userId! } });
   if (count <= 1) {
     res.status(400).json({ error: 'Нельзя удалить последний заказ' });
     return;

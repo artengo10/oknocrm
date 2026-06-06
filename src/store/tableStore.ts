@@ -35,6 +35,7 @@ interface TableState {
   addRow: (orderId: string, row: TableRow) => void;
   removeRow: (orderId: string, rowId: string) => void;
   updateRows: (orderId: string, rows: TableRow[]) => void;
+  clearOrder: (orderId: string) => void;
 }
 
 export const useTableStore = create<TableState>()(
@@ -51,6 +52,13 @@ export const useTableStore = create<TableState>()(
       },
       updateRows: (orderId, rows) => {
         set((s) => ({ rows: { ...s.rows, [orderId]: rows } }));
+      },
+      clearOrder: (orderId) => {
+        set((s) => {
+          const next = { ...s.rows };
+          delete next[orderId];
+          return { rows: next };
+        });
       },
     }),
     { name: 'crm-order-table' }

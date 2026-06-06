@@ -2,8 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useTableStore, type TableRow } from '../../store/tableStore';
 import { useOrdersStore } from '../../store/ordersStore';
 import { useConstructorStore, type ShapeType } from '../../store/constructorStore';
-import { calculateCost, DEFAULT_PRICES, type CalcPrices, type ProdType, type Material, type GlassType, type ExtraLockType, type ExtraZipperType, type FrameColor } from '../../lib/calculator';
-import { apiGetPrices } from '../../api/settings';
+import { calculateCost, type CalcPrices, type ProdType, type Material, type GlassType, type ExtraLockType, type ExtraZipperType, type FrameColor } from '../../lib/calculator';
+import { useSettingsStore } from '../../store/settingsStore';
 
 // ─── translation maps ─────────────────────────────────────────────────────────
 
@@ -72,7 +72,7 @@ const COLS: { key: keyof TableRow | 'idx'; label: string; w: number }[] = [
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 function fmtPrice(n: number): string {
-  if (!n) return '';
+  if (!n && n !== 0) return '';
   return Math.round(n).toLocaleString('ru-RU') + ' ₽';
 }
 
@@ -107,8 +107,8 @@ function cellView(key: keyof TableRow | 'idx', row: TableRow, idx: number): stri
 
 function recalcRow(row: TableRow, prices: CalcPrices): TableRow {
   const parts = row.size.split('×');
-  const w = parseFloat(parts[1]) || 100;
-  const h = parseFloat(parts[0]) || 100;
+  const h = parseFloat(parts[0] ?? '') || 100;
+  const w = parseFloat(parts[1] ?? '') || 100;
   const result = calculateCost({
     prodType: row.prodType as ProdType,
     width: w, height: h,
@@ -353,7 +353,7 @@ const EMPTY_ROWS: TableRow[] = [];
 // ─── main component ───────────────────────────────────────────────────────────
 
 export function OrderTable() {
-  const [prices, setPrices] = useState<CalcPrices>(DEFAULT_PRICES);
+  const prices = useSettingsStore((s) => s.prices);
   const [editMode, setEditMode] = useState(false);
   const [editRows, setEditRows] = useState<TableRow[]>([]);
   const [addFlash, setAddFlash] = useState(false);
@@ -367,24 +367,6 @@ export function OrderTable() {
   const constructor = useConstructorStore();
 
   const activeOrder = orders.find((o) => o.id === activeOrderId) ?? null;
-
-  useEffect(() => {
-    apiGetPrices()
-      .then((dto) => setPrices({
-        materialPvc:        dto.materialPvc,
-        materialScreen:     dto.materialScreen,
-        materialOxford:     dto.materialOxford,
-        moskit:             dto.moskit,
-        pocket:             dto.pocket,
-        extraLockRotary:    dto.extraLockRotary,
-        extraLockFrench:    dto.extraLockFrench,
-        extraZipperSpiral:  dto.extraZipperSpiral,
-        extraZipperTractor: dto.extraZipperTractor,
-        glassTint:          dto.glassTint,
-        install:            dto.install,
-      }))
-      .catch(() => {});
-  }, []);
 
   // reset on order change
   useEffect(() => { setEditMode(false); setActiveRowId(null); }, [activeOrderId]);
@@ -421,7 +403,7 @@ export function OrderTable() {
       extraZipperCost: result.extraZipperCost,
       glassSurcharge:  result.glassSurcharge,
       installCost:     result.installCost,
-      extraWorkPrice:  0,
+      extraWorkPrice:  result.extraWorkPrice,
       extraWorkDesc:   '',
       price:           result.finalTotal,
     };

@@ -5,6 +5,7 @@ export interface PriceListDto {
   materialPvc: number;
   materialScreen: number;
   materialOxford: number;
+  materialFabric: number;
   moskit: number;
   pocket: number;
   extraLockRotary: number;

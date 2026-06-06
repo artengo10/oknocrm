@@ -15,6 +15,7 @@ export function AutoSave() {
       s.moskit, s.pocket, s.install,
       s.extraLockType, s.extraLockCount,
       s.extraZipperType, s.extraZipperLen,
+      s.extraWorkPrice,
       s.okantovkaTop, s.okantovkaBottom, s.okantovkaLeft, s.okantovkaRight,
     ].join(',')
   );
