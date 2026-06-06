@@ -1,56 +1,76 @@
-const features = [
-  'Конструктор изделий — 11 типов мягких окон и дверей',
-  'Автоматический расчёт стоимости по прайс-листу',
-  'SVG-визуализация каждого изделия',
-  'Москитные сетки, карманы, замки, молнии',
-  'Добавление позиций в заказ с итоговой суммой',
-];
+import { useState } from 'react';
+import { ParamsPanel } from '../constructor/ParamsPanel';
+import { WindowVisualizer } from '../constructor/WindowVisualizer';
+import { OrderTable } from '../constructor/OrderTable';
+
+const TABLE_DEFAULT = 300;
+const TABLE_MIN = 80;
+const TABLE_MAX = 560;
+
+function useVerticalResize(initial: number): [number, (e: React.MouseEvent) => void] {
+  const [height, setHeight] = useState(initial);
+
+  function startDrag(e: React.MouseEvent) {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = height;
+
+    function onMove(ev: MouseEvent) {
+      // drag down → table shrinks, drag up → table grows
+      const next = Math.max(TABLE_MIN, Math.min(TABLE_MAX, startH - (ev.clientY - startY)));
+      setHeight(next);
+    }
+
+    function onUp() {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+
+  return [height, startDrag];
+}
 
 export function MainContent() {
+  const [tableHeight, startTableDrag] = useVerticalResize(TABLE_DEFAULT);
+
   return (
-    <main className="flex-1 flex flex-col items-center justify-center bg-[#f8fafc] p-8 overflow-auto">
-      <div className="bg-white rounded-2xl shadow-sm border border-[#e2e8f0] p-10 text-center max-w-md w-full">
-        <div className="w-14 h-14 rounded-2xl bg-[#eff6ff] flex items-center justify-center mx-auto mb-5">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-            <rect x="3" y="3" width="18" height="13" rx="2" stroke="#2563eb" strokeWidth="2" />
-            <path d="M8 20h8M12 16v4" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" />
-            <path d="M7 8h10M7 12h6" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
+    <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+
+      {/* Top: constructor + visualizer — takes remaining height */}
+      <div className="flex flex-1 overflow-hidden min-h-0">
+        <div className="w-[280px] flex-shrink-0 border-r border-[#e2e8f0] dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+          <ParamsPanel />
         </div>
-
-        <span className="inline-block bg-[#eff6ff] text-[#2563eb] text-xs font-semibold px-3 py-1 rounded-full mb-4">
-          Этап 2
-        </span>
-
-        <h2 className="text-base font-semibold text-[#0f172a] mb-2">Конструктор изделия</h2>
-        <p className="text-sm text-[#64748b] mb-6 leading-relaxed">
-          Здесь появится полноценный редактор мягких окон и дверей
-        </p>
-
-        <ul className="text-left space-y-2.5">
-          {features.map((f) => (
-            <li key={f} className="flex items-start gap-2.5 text-sm text-[#475569]">
-              <svg
-                className="mt-0.5 flex-shrink-0"
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-              >
-                <circle cx="8" cy="8" r="7" stroke="#e2e8f0" strokeWidth="1.5" />
-                <path
-                  d="M5 8l2 2 4-4"
-                  stroke="#94a3b8"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              {f}
-            </li>
-          ))}
-        </ul>
+        <div className="flex-1 bg-[#f8fafc] dark:bg-slate-950 overflow-hidden min-w-0">
+          <WindowVisualizer />
+        </div>
       </div>
+
+      {/* Vertical resize handle */}
+      <div
+        onMouseDown={startTableDrag}
+        className="relative h-1 flex-shrink-0 cursor-row-resize group z-10"
+      >
+        <div className="absolute inset-x-0 -top-1 -bottom-1" />
+        <div className="absolute inset-x-0 top-0 bottom-0 bg-[#e2e8f0] dark:bg-slate-700 group-hover:bg-[#2563eb] transition-colors duration-150" />
+        {/* drag indicator dots */}
+        <div className="absolute inset-0 flex items-center justify-center gap-0.5 pointer-events-none">
+          <div className="w-6 h-0.5 rounded-full bg-[#cbd5e1] dark:bg-slate-600 group-hover:bg-[#93c5fd] transition-colors" />
+        </div>
+      </div>
+
+      {/* Bottom: order table — fixed height, resizable */}
+      <div className="flex-shrink-0 overflow-hidden" style={{ height: tableHeight }}>
+        <OrderTable />
+      </div>
+
     </main>
   );
 }

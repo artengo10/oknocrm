@@ -4,6 +4,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 import authRouter from './routes/auth';
+import settingsRouter from './routes/settings';
+import ordersRouter from './routes/orders';
 
 const REQUIRED_ENV = ['DATABASE_URL', 'JWT_SECRET'] as const;
 for (const key of REQUIRED_ENV) {
@@ -29,6 +31,8 @@ const authLimiter = rateLimit({
 });
 
 app.use('/api/auth', authLimiter, authRouter);
+app.use('/api/settings', settingsRouter);
+app.use('/api/orders', ordersRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, ts: new Date().toISOString() });

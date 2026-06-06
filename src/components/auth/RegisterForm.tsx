@@ -15,20 +15,9 @@ export function RegisterForm() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
-
-    if (!email.includes('@')) {
-      setError('Некорректный email');
-      return;
-    }
-    if (password.length < 8) {
-      setError('Пароль минимум 8 символов');
-      return;
-    }
-    if (password !== confirm) {
-      setError('Пароли не совпадают');
-      return;
-    }
-
+    if (!email.includes('@')) { setError('Некорректный email'); return; }
+    if (password.length < 8) { setError('Пароль минимум 8 символов'); return; }
+    if (password !== confirm) { setError('Пароли не совпадают'); return; }
     setLoading(true);
     try {
       const data = await apiRegister(email, password);
@@ -36,16 +25,17 @@ export function RegisterForm() {
       navigate('/', { replace: true });
     } catch (err: unknown) {
       const msg =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        'Ошибка регистрации';
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Ошибка регистрации';
       setError(msg);
     } finally {
       setLoading(false);
     }
   }
 
+  const inputClass = "w-full border border-[#e2e8f0] dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-sm text-[#0f172a] dark:text-slate-100 bg-white dark:bg-slate-700 outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-[#94a3b8] dark:placeholder:text-slate-500";
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] dark:bg-slate-950">
       <div className="w-full max-w-sm px-4">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 bg-[#2563eb] rounded-xl mb-4">
@@ -54,47 +44,26 @@ export function RegisterForm() {
               <path d="M8 20h8M12 16v4" stroke="white" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </div>
-          <h1 className="text-xl font-semibold text-[#0f172a]">CRM · Мягкие окна</h1>
-          <p className="text-sm text-[#64748b] mt-1">Создайте аккаунт</p>
+          <h1 className="text-xl font-semibold text-[#0f172a] dark:text-slate-100">CRM · Мягкие окна</h1>
+          <p className="text-sm text-[#64748b] dark:text-slate-400 mt-1">Создайте аккаунт</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-[#e2e8f0] p-8">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-[#e2e8f0] dark:border-slate-700 p-8">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="block text-sm font-medium text-[#0f172a] mb-1.5">Email</label>
-              <input
-                type="email"
-                placeholder="name@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full border border-[#e2e8f0] rounded-lg px-3.5 py-2.5 text-sm text-[#0f172a] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-[#94a3b8]"
-              />
+              <label className="block text-sm font-medium text-[#0f172a] dark:text-slate-200 mb-1.5">Email</label>
+              <input type="email" placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} required className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#0f172a] mb-1.5">Пароль</label>
-              <input
-                type="password"
-                placeholder="Минимум 8 символов"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full border border-[#e2e8f0] rounded-lg px-3.5 py-2.5 text-sm text-[#0f172a] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-[#94a3b8]"
-              />
+              <label className="block text-sm font-medium text-[#0f172a] dark:text-slate-200 mb-1.5">Пароль</label>
+              <input type="password" placeholder="Минимум 8 символов" value={password} onChange={(e) => setPassword(e.target.value)} required className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#0f172a] mb-1.5">Подтверждение пароля</label>
-              <input
-                type="password"
-                placeholder="Повторите пароль"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                required
-                className="w-full border border-[#e2e8f0] rounded-lg px-3.5 py-2.5 text-sm text-[#0f172a] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-blue-500/10 transition-all placeholder:text-[#94a3b8]"
-              />
+              <label className="block text-sm font-medium text-[#0f172a] dark:text-slate-200 mb-1.5">Подтверждение пароля</label>
+              <input type="password" placeholder="Повторите пароль" value={confirm} onChange={(e) => setConfirm(e.target.value)} required className={inputClass} />
             </div>
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-3.5 py-2.5 rounded-lg">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm px-3.5 py-2.5 rounded-lg">
                 {error}
               </div>
             )}
@@ -106,11 +75,9 @@ export function RegisterForm() {
               {loading ? 'Создаём аккаунт...' : 'Зарегистрироваться'}
             </button>
           </form>
-          <p className="text-center text-sm text-[#64748b] mt-5">
+          <p className="text-center text-sm text-[#64748b] dark:text-slate-400 mt-5">
             Уже есть аккаунт?{' '}
-            <Link to="/login" className="text-[#2563eb] font-semibold hover:underline">
-              Войти
-            </Link>
+            <Link to="/login" className="text-[#2563eb] font-semibold hover:underline">Войти</Link>
           </p>
         </div>
       </div>

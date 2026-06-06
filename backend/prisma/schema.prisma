@@ -54,9 +54,10 @@ model Order {
 model OrderItem {
   id              String  @id @default(cuid())
   orderId         String
-  prodType        String
-  material        String
-  color           String
+  prodType        String  @default("window")
+  shape           String  @default("rect")
+  material        String  @default("pvc")
+  color           String  @default("brown")
   glass           String
   opening         String
   width           Int
@@ -70,6 +71,10 @@ model OrderItem {
   extraZipperLen  Int?
   extraWorkPrice  Float?
   extraWorkDesc   String?
+  okantovkaTop    Int     @default(70)
+  okantovkaBottom Int     @default(70)
+  okantovkaLeft   Int     @default(70)
+  okantovkaRight  Int     @default(70)
   materialCost    Float?
   fittingsCost    Float?
   moskitCost      Float?

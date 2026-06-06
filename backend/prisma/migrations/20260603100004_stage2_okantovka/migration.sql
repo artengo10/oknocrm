@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "OrderItem" ADD COLUMN     "okantovkaBottom" INTEGER NOT NULL DEFAULT 70,
+ADD COLUMN     "okantovkaLeft" INTEGER NOT NULL DEFAULT 70,
+ADD COLUMN     "okantovkaRight" INTEGER NOT NULL DEFAULT 70,
+ADD COLUMN     "okantovkaTop" INTEGER NOT NULL DEFAULT 70;
