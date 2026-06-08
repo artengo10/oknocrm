@@ -638,7 +638,13 @@ export function OrderTable() {
   function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      showStatus(false, 'Файл слишком большой (макс. 5 МБ)');
+      e.target.value = '';
+      return;
+    }
     processImportFile(file);
+    exitSelection();
     e.target.value = '';
   }
 
@@ -735,10 +741,10 @@ export function OrderTable() {
                   Удалить{selectedIds.size > 1 ? ` (${selectedIds.size})` : ''}
                 </button>
               )}
-              <button onClick={() => fileRef.current?.click()} className="px-3 py-1.5 rounded-md text-xs font-medium border border-[#e2e8f0] dark:border-slate-600 text-[#64748b] dark:text-slate-400 hover:bg-[#f1f5f9] dark:hover:bg-slate-800 transition-colors">
+              <button onClick={() => fileRef.current?.click()} className="px-3 py-1.5 rounded-md text-xs font-medium bg-[#2563eb] hover:bg-[#1d4ed8] text-white transition-colors">
                 Импорт
               </button>
-              <button onClick={exitSelection} className="px-3 py-1.5 rounded-md text-xs font-medium text-[#64748b] dark:text-slate-400 hover:text-[#0f172a] dark:hover:text-slate-100 transition-colors">
+              <button onClick={exitSelection} className="px-3 py-1.5 rounded-md text-xs font-medium bg-[#2563eb] hover:bg-[#1d4ed8] text-white transition-colors">
                 Отмена
               </button>
             </div>

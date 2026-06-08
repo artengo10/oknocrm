@@ -83,9 +83,8 @@ function FittingsInteractive({
   const vtRef = useRef(vt);
   useEffect(() => { vtRef.current = vt; }, [vt]);
 
-  // Реальная толщина рамы для rect/square — из ix/iy.
-  // Для arch/triangle используем autoBandPx (приближение).
-  const realBand = (shape === 'rect' || shape === 'square') ? (iy - voy) : autoBandPx;
+  // Реальная толщина рамы: для rect/square из iy, для arch/triangle из ix (= okL в px).
+  const realBand = (shape === 'rect' || shape === 'square') ? (iy - voy) : (ix - vox);
   const r  = Math.max(4, Math.min(realBand * 0.27, 15));
   const sz = r * 2;
 
@@ -106,27 +105,33 @@ function FittingsInteractive({
       const ryOut  = iy - voy;
       const rxOut  = visW / 2;
       const arcCx  = vox + visW / 2;
+      const lBand  = ix - vox;
+      const rBand  = (vox + visW) - (ix + iw);
+      const bBand  = (voy + visH) - (iy + ih);
       if (side === 'top') {
         const x    = vox + posNorm * visW;
         const cosA = Math.max(-1, Math.min(1, (x - arcCx) / rxOut));
         const yOut = arcCy - ryOut * Math.sin(Math.acos(cosA));
-        return { cx: x, cy: yOut + autoBandPx / 2 };
+        return { cx: x, cy: yOut + lBand / 2 };
       }
       if (side === 'left')  {
         const cy = voy + posNorm * visH;
-        return cy < arcCy ? null : { cx: vox + autoBandPx / 2, cy };
+        return cy < arcCy ? null : { cx: vox + lBand / 2, cy };
       }
       if (side === 'right') {
         const cy = voy + posNorm * visH;
-        return cy < arcCy ? null : { cx: vox + visW - autoBandPx / 2, cy };
+        return cy < arcCy ? null : { cx: ix + iw + rBand / 2, cy };
       }
       // bottom
-      return { cx: vox + posNorm * visW, cy: voy + visH - autoBandPx / 2 };
+      return { cx: vox + posNorm * visW, cy: iy + ih + bBand / 2 };
     }
 
     if (shape === 'triangle') {
       if (side === 'top') return null; // triangle has no horizontal top edge
-      if (side === 'bottom') return { cx: vox + posNorm * visW, cy: voy + visH - autoBandPx / 2 };
+      if (side === 'bottom') {
+        const bBand = (voy + visH) - (iy + ih);
+        return { cx: vox + posNorm * visW, cy: iy + ih + bBand / 2 };
+      }
       // left/right diagonal: interpolate midpoint between outer and inner edge
       const tipO = { x: vox + visW / 2, y: voy };
       const tipI = { x: vox + visW / 2, y: iy };
@@ -191,11 +196,11 @@ function FittingsInteractive({
   // Rect-based strips for sides that are straight lines
   const rectStrips: { side: FittingSide; x: number; y: number; w: number; h: number }[] =
     (shape === 'arch') ? [
-      { side: 'left',   x: vox,                 y: iy,                  w: autoBandPx, h: visH - (iy - voy) },
-      { side: 'right',  x: vox+visW-autoBandPx, y: iy,                  w: autoBandPx, h: visH - (iy - voy) },
-      { side: 'bottom', x: vox,                 y: voy+visH-autoBandPx, w: visW,       h: autoBandPx },
+      { side: 'left',   x: vox,      y: iy,      w: ix - vox,                 h: visH - (iy - voy) },
+      { side: 'right',  x: ix + iw,  y: iy,      w: (vox + visW) - (ix + iw), h: visH - (iy - voy) },
+      { side: 'bottom', x: vox,      y: iy + ih, w: visW,                      h: (voy + visH) - (iy + ih) },
     ] : (shape === 'triangle') ? [
-      { side: 'bottom', x: vox, y: voy+visH-autoBandPx, w: visW, h: autoBandPx },
+      { side: 'bottom', x: vox, y: iy + ih, w: visW, h: (voy + visH) - (iy + ih) },
     ] : [
       { side: 'top',    x: vox,                 y: voy,                 w: visW,       h: autoBandPx },
       { side: 'bottom', x: vox,                 y: voy+visH-autoBandPx, w: visW,       h: autoBandPx },
