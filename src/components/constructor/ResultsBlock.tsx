@@ -64,6 +64,17 @@ export function ResultsBlock({ prices, hideButton }: Props) {
       extraWorkPrice:  0,
       extraWorkDesc:   '',
       price:           r.finalTotal,
+      okantovkaTop:    store.okantovkaTop,
+      okantovkaBottom: store.okantovkaBottom,
+      okantovkaLeft:   store.okantovkaLeft,
+      okantovkaRight:  store.okantovkaRight,
+      luverSpacingTop:    store.luverSpacingTop,
+      luverSpacingBottom: store.luverSpacingBottom,
+      luverSpacingLeft:   store.luverSpacingLeft,
+      luverSpacingRight:  store.luverSpacingRight,
+      remenLength:     store.remenLength,
+      remenWidth:      store.remenWidth,
+      fittings:        store.fittings,
     });
     setFlash(true);
     setTimeout(() => setFlash(false), 1200);

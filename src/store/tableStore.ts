@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { FittingItem } from './constructorStore';
 
 export interface TableRow {
   id: string;
@@ -28,6 +29,17 @@ export interface TableRow {
   extraWorkPrice: number;
   extraWorkDesc: string;
   price: number;
+  okantovkaTop?: number;
+  okantovkaBottom?: number;
+  okantovkaLeft?: number;
+  okantovkaRight?: number;
+  luverSpacingTop?: number;
+  luverSpacingBottom?: number;
+  luverSpacingLeft?: number;
+  luverSpacingRight?: number;
+  remenLength?: number;
+  remenWidth?: number;
+  fittings?: FittingItem[];
 }
 
 interface TableState {
@@ -35,6 +47,7 @@ interface TableState {
   addRow: (orderId: string, row: TableRow) => void;
   removeRow: (orderId: string, rowId: string) => void;
   updateRows: (orderId: string, rows: TableRow[]) => void;
+  patchRow: (orderId: string, rowId: string, patch: Partial<TableRow>) => void;
   clearOrder: (orderId: string) => void;
 }
 
@@ -52,6 +65,14 @@ export const useTableStore = create<TableState>()(
       },
       updateRows: (orderId, rows) => {
         set((s) => ({ rows: { ...s.rows, [orderId]: rows } }));
+      },
+      patchRow: (orderId, rowId, patch) => {
+        set((s) => ({
+          rows: {
+            ...s.rows,
+            [orderId]: (s.rows[orderId] ?? []).map((r) => r.id === rowId ? { ...r, ...patch } : r),
+          },
+        }));
       },
       clearOrder: (orderId) => {
         set((s) => {

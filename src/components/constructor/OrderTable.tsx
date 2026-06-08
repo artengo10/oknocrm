@@ -8,6 +8,7 @@ import { useSettingsStore } from '../../store/settingsStore';
 // ─── translation maps ─────────────────────────────────────────────────────────
 
 const PROD_RU: Record<string, string> = { window: 'Мягкое окно', door: 'Мягкая дверь' };
+const SHAPE_RU: Record<string, string> = { rect: 'Прямоуг.', square: 'Квадрат', arch: 'Арка', triangle: 'Треугол.' };
 const MAT_RU: Record<string, string> = { pvc: 'ПВХ', screen: 'Сетка', oxford: 'Оксфорд', fabric: 'Ткань' };
 const COLOR_RU: Record<string, string> = {
   brown: 'Коричневый', white: 'Белый', gray: 'Серый',
@@ -44,6 +45,7 @@ function ru<T extends Record<string, string>>(map: T, val: string): string {
 const COLS: { key: keyof TableRow | 'idx'; label: string; w: number }[] = [
   { key: 'idx',            label: '№',              w: 44  },
   { key: 'prodType',       label: 'Изделие',        w: 128 },
+  { key: 'shape',          label: 'Форма',          w: 96  },
   { key: 'size',           label: 'Размер',         w: 100 },
   { key: 'mat',            label: 'Материал',       w: 96  },
   { key: 'color',          label: 'Цвет',           w: 118 },
@@ -81,6 +83,7 @@ function cellView(key: keyof TableRow | 'idx', row: TableRow, idx: number): stri
   const v = (row as Record<string, unknown>)[key as string];
   switch (key) {
     case 'prodType':       return ru(PROD_RU, v as string);
+    case 'shape':          return ru(SHAPE_RU, v as string);
     case 'mat':            return ru(MAT_RU, v as string);
     case 'color':          return ru(COLOR_RU, v as string);
     case 'glass':          return ru(GLASS_RU, v as string);
@@ -287,6 +290,11 @@ function EditCell({
       {Object.entries(PROD_RU).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
     </select>
   );
+  if (key === 'shape') return (
+    <select className={cls} value={v as string} onChange={(e) => onChange(key, e.target.value)}>
+      {Object.entries(SHAPE_RU).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+    </select>
+  );
   if (key === 'mat') return (
     <select className={cls} value={v as string} onChange={(e) => onChange(key, e.target.value)}>
       {Object.entries(MAT_RU).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
@@ -356,20 +364,92 @@ export function OrderTable() {
   const prices = useSettingsStore((s) => s.prices);
   const [editMode, setEditMode] = useState(false);
   const [editRows, setEditRows] = useState<TableRow[]>([]);
-  const [addFlash, setAddFlash] = useState(false);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  const [importStatus, setImportStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { activeOrderId, orders } = useOrdersStore();
-  const { addRow, removeRow, updateRows } = useTableStore();
+  const { addRow, removeRow, updateRows, patchRow } = useTableStore();
   const savedRows = useTableStore((s) => s.rows[activeOrderId ?? ''] ?? EMPTY_ROWS);
   const constructor = useConstructorStore();
 
   const activeOrder = orders.find((o) => o.id === activeOrderId) ?? null;
 
-  // reset on order change
-  useEffect(() => { setEditMode(false); setActiveRowId(null); }, [activeOrderId]);
+  // reset on order change, auto-select first row
+  useEffect(() => {
+    setEditMode(false);
+    const rows = useTableStore.getState().rows[activeOrderId ?? ''] ?? [];
+    setActiveRowId(rows.length > 0 ? rows[0].id : null);
+  }, [activeOrderId]);
+
+  // sync constructor → active table row (debounced 400ms)
+  useEffect(() => {
+    if (!activeOrderId || !activeRowId || editMode) return;
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => {
+      const input = constructor.toCalcInput();
+      const result = calculateCost(input, prices);
+      patchRow(activeOrderId, activeRowId, {
+        prodType:        input.prodType,
+        shape:           constructor.shape,
+        size:            `${input.height}×${input.width}`,
+        mat:             input.material,
+        color:           constructor.color,
+        glass:           input.glass,
+        opening:         input.openingType,
+        moskit:          input.moskit,
+        pocket:          input.pocket,
+        install:         input.install,
+        extraLockType:   input.extraLockType,
+        extraLockCount:  input.extraLockCount,
+        extraZipperType: input.extraZipperType,
+        extraZipperLen:  input.extraZipperLen,
+        okantovkaTop:    constructor.okantovkaTop,
+        okantovkaBottom: constructor.okantovkaBottom,
+        okantovkaLeft:   constructor.okantovkaLeft,
+        okantovkaRight:  constructor.okantovkaRight,
+        luverSpacingTop:    constructor.luverSpacingTop,
+        luverSpacingBottom: constructor.luverSpacingBottom,
+        luverSpacingLeft:   constructor.luverSpacingLeft,
+        luverSpacingRight:  constructor.luverSpacingRight,
+        remenLength:     constructor.remenLength,
+        remenWidth:      constructor.remenWidth,
+        fittings:        constructor.fittings,
+        materialCost:    result.materialCost,
+        fittingsCost:    result.fittingsCost,
+        moskitCost:      result.moskitCost,
+        pocketCost:      result.pocketCost,
+        extraLockCost:   result.extraLockCost,
+        extraZipperCost: result.extraZipperCost,
+        glassSurcharge:  result.glassSurcharge,
+        installCost:     result.installCost,
+        extraWorkPrice:  result.extraWorkPrice,
+        price:           result.finalTotal,
+      });
+    }, 400);
+    return () => { if (syncTimerRef.current) clearTimeout(syncTimerRef.current); };
+  }, [
+    activeOrderId, activeRowId, editMode, prices, patchRow,
+    constructor.prodType, constructor.shape,
+    constructor.width, constructor.height,
+    constructor.material, constructor.color, constructor.glass,
+    constructor.openingType, constructor.moskit, constructor.pocket, constructor.install,
+    constructor.extraLockType, constructor.extraLockCount,
+    constructor.extraZipperType, constructor.extraZipperLen,
+    constructor.extraWorkPrice,
+    constructor.okantovkaTop, constructor.okantovkaBottom,
+    constructor.okantovkaLeft, constructor.okantovkaRight,
+    constructor.luverSpacingTop, constructor.luverSpacingBottom,
+    constructor.luverSpacingLeft, constructor.luverSpacingRight,
+    constructor.remenLength, constructor.remenWidth,
+    constructor.fittings,
+  ]);
 
   const rows = editMode ? editRows : savedRows;
   const total = rows.reduce((s, r) => s + (r.price || 0), 0);
@@ -406,10 +486,20 @@ export function OrderTable() {
       extraWorkPrice:  result.extraWorkPrice,
       extraWorkDesc:   '',
       price:           result.finalTotal,
+      okantovkaTop:    constructor.okantovkaTop,
+      okantovkaBottom: constructor.okantovkaBottom,
+      okantovkaLeft:   constructor.okantovkaLeft,
+      okantovkaRight:  constructor.okantovkaRight,
+      luverSpacingTop:    constructor.luverSpacingTop,
+      luverSpacingBottom: constructor.luverSpacingBottom,
+      luverSpacingLeft:   constructor.luverSpacingLeft,
+      luverSpacingRight:  constructor.luverSpacingRight,
+      remenLength:     constructor.remenLength,
+      remenWidth:      constructor.remenWidth,
+      fittings:        constructor.fittings,
     };
     addRow(activeOrderId, row);
-    setAddFlash(true);
-    setTimeout(() => setAddFlash(false), 1200);
+    setActiveRowId(row.id);
   }
 
   // ── edit mode ────────────────────────────────────────────────────────────────
@@ -461,6 +551,21 @@ export function OrderTable() {
     sf('extraZipperType', row.extraZipperType as ExtraZipperType);
     sf('extraZipperLen',  row.extraZipperLen);
     sf('extraWorkPrice',  row.extraWorkPrice);
+    sf('okantovkaTop',    row.okantovkaTop    ?? 70);
+    sf('okantovkaBottom', row.okantovkaBottom ?? 70);
+    sf('okantovkaLeft',   row.okantovkaLeft   ?? 70);
+    sf('okantovkaRight',  row.okantovkaRight  ?? 70);
+    sf('luverSpacingTop',    row.luverSpacingTop    ?? 300);
+    sf('luverSpacingBottom', row.luverSpacingBottom ?? 300);
+    sf('luverSpacingLeft',   row.luverSpacingLeft   ?? 300);
+    sf('luverSpacingRight',  row.luverSpacingRight  ?? 300);
+    sf('remenLength', row.remenLength ?? 0);
+    sf('remenWidth',  row.remenWidth  ?? 0);
+    if (row.fittings && row.fittings.length > 0) {
+      sf('fittings', row.fittings);
+    } else {
+      constructor.generateFittings();
+    }
     setActiveRowId(row.id);
   }
 
@@ -472,19 +577,80 @@ export function OrderTable() {
     }
   }
 
+  // ── selection mode ───────────────────────────────────────────────────────────
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function selectAll() {
+    if (selectedIds.size === rows.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(rows.map((r) => r.id)));
+    }
+  }
+
+  function exitSelection() {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }
+
+  function deleteSelected() {
+    if (activeOrderId) {
+      [...selectedIds].forEach((id) => removeRow(activeOrderId, id));
+    }
+    exitSelection();
+  }
+
+  function exportSelected() {
+    const toExport = rows.filter((r) => selectedIds.has(r.id));
+    exportTxt(toExport.length > 0 ? toExport : rows, activeOrder?.orderNum);
+  }
+
+  function editSelected() {
+    setEditRows([...savedRows]);
+    setEditMode(true);
+    exitSelection();
+  }
+
   // ── TXT import ───────────────────────────────────────────────────────────────
-  function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !activeOrderId) return;
+  function showStatus(ok: boolean, msg: string) {
+    if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+    setImportStatus({ ok, msg });
+    statusTimerRef.current = setTimeout(() => setImportStatus(null), ok ? 3000 : 5000);
+  }
+
+  function processImportFile(file: File) {
+    if (!activeOrderId) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const imported = importTxt(text);
-      if (!imported.length) { alert('Позиции не найдены в файле'); return; }
-      updateRows(activeOrderId, imported);
-      alert(`Импортировано позиций: ${imported.length}`);
+      try {
+        const raw = ev.target?.result as string;
+        const text = raw.replace(/^﻿/, ''); // strip UTF-8 BOM (Notepad)
+        const imported = importTxt(text);
+        if (!imported.length) {
+          showStatus(false, 'Файл не распознан — используйте экспорт из этой программы');
+          return;
+        }
+        const existing = useTableStore.getState().rows[activeOrderId] ?? [];
+        updateRows(activeOrderId, [...existing, ...imported]);
+        showStatus(true, `Импортировано: ${imported.length} поз.`);
+      } catch {
+        showStatus(false, 'Ошибка при чтении файла');
+      }
     };
+    reader.onerror = () => showStatus(false, 'Не удалось открыть файл');
     reader.readAsText(file, 'utf-8');
+  }
+
+  function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processImportFile(file);
     e.target.value = '';
   }
 
@@ -506,15 +672,13 @@ export function OrderTable() {
     document.addEventListener('mouseup', onUp);
   }
 
-  const colsWithDelete = [...COLS];
-
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-slate-900 border-t border-[#e2e8f0] dark:border-slate-700">
+    <div className="relative flex flex-col h-full bg-white dark:bg-slate-900 border-t border-[#e2e8f0] dark:border-slate-700">
 
       {/* toolbar */}
-      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-[#e2e8f0] dark:border-slate-700 flex-shrink-0 flex-wrap">
+      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-[#e2e8f0] dark:border-slate-700 flex-shrink-0">
         <span className="text-sm font-semibold text-[#0f172a] dark:text-slate-100 mr-1">
-          Состав заказа
+          Таблица заказа
           {activeOrder && (
             <span className="ml-1.5 text-[#94a3b8] dark:text-slate-500 font-normal">
               №{activeOrder.orderNum}
@@ -522,81 +686,97 @@ export function OrderTable() {
           )}
         </span>
 
-        <button
-          onClick={handleAdd}
-          disabled={!activeOrderId}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-            addFlash
-              ? 'bg-[#059669] text-white'
-              : 'bg-[#2563eb] hover:bg-[#1d4ed8] text-white disabled:opacity-30 disabled:cursor-not-allowed'
-          }`}
-        >
-          <svg width="12" height="12" viewBox="0 0 11 11" fill="none">
-            <path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-          </svg>
-          {addFlash ? 'Добавлено!' : 'Добавить позицию'}
-        </button>
+        {!editMode && (
+          <button
+            onClick={handleAdd}
+            disabled={!activeOrderId}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all bg-[#2563eb] hover:bg-[#1d4ed8] text-white disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <svg width="12" height="12" viewBox="0 0 11 11" fill="none">
+              <path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+            Добавить позицию
+          </button>
+        )}
 
-        <div className="flex items-center gap-2 ml-auto">
-          {!editMode ? (
-            <button
-              onClick={enterEdit}
-              disabled={savedRows.length === 0}
-              className="px-3 py-1.5 rounded-md text-xs font-medium bg-[#2563eb] hover:bg-[#1d4ed8] text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              Редактировать
+        {editMode && (
+          <div className="flex items-center gap-2">
+            <button onClick={saveEdit} className="px-3 py-1.5 rounded-md text-xs font-semibold bg-[#059669] text-white hover:bg-[#047857] transition-colors">
+              Сохранить
             </button>
-          ) : (
-            <>
-              <button
-                onClick={saveEdit}
-                className="px-3 py-1.5 rounded-md text-xs font-semibold bg-[#059669] text-white hover:bg-[#047857] transition-colors"
-              >
-                Сохранить
+            <button onClick={cancelEdit} className="px-3 py-1.5 rounded-md text-xs font-medium border border-[#e2e8f0] dark:border-slate-600 text-[#64748b] dark:text-slate-400 hover:bg-[#f1f5f9] dark:hover:bg-slate-800 transition-colors">
+              Отмена
+            </button>
+          </div>
+        )}
+
+        <div className="ml-auto flex items-center gap-2">
+          <input ref={fileRef} type="file" accept=".txt" className="hidden" onChange={handleImport} />
+          {importStatus && (
+            <span className={`text-xs font-medium ${importStatus.ok ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+              {importStatus.msg}
+            </span>
+          )}
+          {!selectionMode && !editMode && (
+            <button
+              onClick={() => setSelectionMode(true)}
+              disabled={savedRows.length === 0}
+              className="px-3 py-1.5 rounded-md text-xs font-semibold bg-[#2563eb] hover:bg-[#1d4ed8] text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              Выбрать
+            </button>
+          )}
+          {selectionMode && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[#64748b] dark:text-slate-400">
+                {selectedIds.size > 0 ? `Выбрано: ${selectedIds.size}` : 'Выберите строки'}
+              </span>
+              {selectedIds.size === 1 && (
+                <button onClick={editSelected} className="px-3 py-1.5 rounded-md text-xs font-semibold bg-[#2563eb] hover:bg-[#1d4ed8] text-white transition-colors">
+                  Редактировать
+                </button>
+              )}
+              {selectedIds.size > 0 && (
+                <button onClick={exportSelected} className="px-3 py-1.5 rounded-md text-xs font-semibold bg-[#2563eb] hover:bg-[#1d4ed8] text-white transition-colors">
+                  Экспорт
+                </button>
+              )}
+              {selectedIds.size > 0 && (
+                <button onClick={deleteSelected} className="px-3 py-1.5 rounded-md text-xs font-semibold bg-red-500 hover:bg-red-600 text-white transition-colors">
+                  Удалить{selectedIds.size > 1 ? ` (${selectedIds.size})` : ''}
+                </button>
+              )}
+              <button onClick={() => fileRef.current?.click()} className="px-3 py-1.5 rounded-md text-xs font-medium border border-[#e2e8f0] dark:border-slate-600 text-[#64748b] dark:text-slate-400 hover:bg-[#f1f5f9] dark:hover:bg-slate-800 transition-colors">
+                Импорт
               </button>
-              <button
-                onClick={cancelEdit}
-                className="px-3 py-1.5 rounded-md text-xs font-medium border border-[#e2e8f0] dark:border-slate-600 text-[#64748b] dark:text-slate-400 hover:bg-[#f1f5f9] dark:hover:bg-slate-800 transition-colors"
-              >
+              <button onClick={exitSelection} className="px-3 py-1.5 rounded-md text-xs font-medium text-[#64748b] dark:text-slate-400 hover:text-[#0f172a] dark:hover:text-slate-100 transition-colors">
                 Отмена
               </button>
-            </>
+            </div>
           )}
-
-          <button
-            onClick={() => exportTxt(savedRows, activeOrder?.orderNum)}
-            disabled={savedRows.length === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#2563eb] hover:bg-[#1d4ed8] text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-              <path d="M12 16l-4-4h3V4h2v8h3l-4 4z" fill="currentColor"/>
-              <path d="M4 20h16v-2H4v2z" fill="currentColor"/>
-            </svg>
-            Экспорт TXT
-          </button>
-
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={!activeOrderId}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#2563eb] hover:bg-[#1d4ed8] text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-              <path d="M12 8l4 4h-3v8h-2v-8H8l4-4z" fill="currentColor"/>
-              <path d="M4 4h16v2H4V4z" fill="currentColor"/>
-            </svg>
-            Импорт TXT
-          </button>
-          <input ref={fileRef} type="file" accept=".txt" className="hidden" onChange={handleImport} />
         </div>
       </div>
 
-      {/* table */}
+      {/* table — also a drop target */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-auto min-h-0"
-        style={{ cursor: 'grab' }}
+        style={{ cursor: dragOver ? 'copy' : 'grab' }}
         onMouseDown={handleScrollDragStart}
+        onDragOver={(e) => { e.preventDefault(); if (activeOrderId) setDragOver(true); }}
+        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false); }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          const file = e.dataTransfer.files[0];
+          if (file) processImportFile(file);
+        }}
       >
+        {dragOver && (
+          <div className="absolute inset-0 bg-blue-50/90 dark:bg-blue-900/40 border-2 border-dashed border-blue-400 rounded flex items-center justify-center z-30 pointer-events-none">
+            <span className="text-blue-600 dark:text-blue-300 font-semibold text-sm">Отпустите файл для импорта</span>
+          </div>
+        )}
         {rows.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-[#94a3b8] dark:text-slate-600">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
@@ -608,10 +788,23 @@ export function OrderTable() {
             </p>
           </div>
         ) : (
-          <table className="text-[13px] border-collapse" style={{ minWidth: colsWithDelete.reduce((s, c) => s + c.w, 0) + 40 }}>
+          <table className="text-[13px] border-collapse" style={{ minWidth: COLS.reduce((s, c) => s + c.w, 0) + (selectionMode ? 36 : 0) }}>
             <thead className="sticky top-0 z-10">
               <tr>
-                {colsWithDelete.map((col) => (
+                {selectionMode && (
+                  <th
+                    style={{ width: 36, minWidth: 36 }}
+                    className="px-1 py-2 bg-[#f1f5f9] dark:bg-slate-800 border border-[#e2e8f0] dark:border-slate-700 text-center"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === rows.length && rows.length > 0}
+                      onChange={selectAll}
+                      className="w-3.5 h-3.5 rounded accent-[#2563eb] cursor-pointer"
+                    />
+                  </th>
+                )}
+                {COLS.map((col) => (
                   <th
                     key={col.key}
                     style={{ width: col.w, minWidth: col.w }}
@@ -620,68 +813,71 @@ export function OrderTable() {
                     {col.label}
                   </th>
                 ))}
-                <th
-                  style={{ width: 36, minWidth: 36 }}
-                  className="px-1 py-2 bg-[#f1f5f9] dark:bg-slate-800 border border-[#e2e8f0] dark:border-slate-700"
-                />
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, idx) => (
-                <tr
-                  key={row.id}
-                  onClick={() => !editMode && loadRowToConstructor(row)}
-                  className={`group transition-colors ${
-                    !editMode ? 'cursor-pointer' : ''
-                  } ${
-                    activeRowId === row.id
-                      ? 'bg-[#eff6ff] dark:bg-blue-900/20'
-                      : 'hover:bg-[#f8fafc] dark:hover:bg-slate-800/50'
-                  }`}
-                >
-                  {colsWithDelete.map((col) => (
-                    <td
-                      key={col.key}
-                      style={{ width: col.w, minWidth: col.w }}
-                      className={`px-2.5 py-1.5 border border-[#e2e8f0] dark:border-slate-700 whitespace-nowrap overflow-hidden text-ellipsis align-middle ${
-                        col.key === 'price' ? 'font-semibold text-[#2563eb] dark:text-blue-400' : 'text-[#334155] dark:text-slate-300'
-                      } ${col.key === 'idx' ? 'text-center text-[#94a3b8] dark:text-slate-500' : ''}`}
-                    >
-                      {editMode && col.key !== 'idx' ? (
-                        <EditCell
-                          col={col}
-                          row={row}
-                          onChange={(field, val) => updateEditRow(row.id, field, val)}
+              {rows.map((row, idx) => {
+                const isSelected = selectedIds.has(row.id);
+                return (
+                  <tr
+                    key={row.id}
+                    onClick={() => {
+                      if (selectionMode) { toggleSelect(row.id); }
+                      else if (!editMode) { loadRowToConstructor(row); }
+                    }}
+                    className={`group transition-colors ${
+                      selectionMode || !editMode ? 'cursor-pointer' : ''
+                    } ${
+                      isSelected
+                        ? 'bg-blue-50 dark:bg-blue-900/30'
+                        : activeRowId === row.id && !selectionMode
+                          ? 'bg-[#eff6ff] dark:bg-blue-900/20'
+                          : 'hover:bg-[#f8fafc] dark:hover:bg-slate-800/50'
+                    }`}
+                  >
+                    {selectionMode && (
+                      <td
+                        className="border border-[#e2e8f0] dark:border-slate-700 text-center align-middle px-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(row.id)}
+                          className="w-3.5 h-3.5 rounded accent-[#2563eb] cursor-pointer"
                         />
-                      ) : (
-                        cellView(col.key, row, idx)
-                      )}
-                    </td>
-                  ))}
-                  <td className="border border-[#e2e8f0] dark:border-slate-700 text-center align-middle px-1">
-                    <button
-                      onClick={() => deleteRow(row.id)}
-                      className="w-5 h-5 rounded flex items-center justify-center text-[#94a3b8] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all"
-                      title="Удалить строку"
-                    >
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                      </td>
+                    )}
+                    {COLS.map((col) => (
+                      <td
+                        key={col.key}
+                        style={{ width: col.w, minWidth: col.w }}
+                        className={`px-2.5 py-1.5 border border-[#e2e8f0] dark:border-slate-700 whitespace-nowrap overflow-hidden text-ellipsis align-middle ${
+                          col.key === 'price' ? 'font-semibold text-[#2563eb] dark:text-blue-400' : 'text-[#334155] dark:text-slate-300'
+                        } ${col.key === 'idx' ? 'text-center text-[#94a3b8] dark:text-slate-500' : ''}`}
+                      >
+                        {editMode && col.key !== 'idx' ? (
+                          <EditCell
+                            col={col}
+                            row={row}
+                            onChange={(field, val) => updateEditRow(row.id, field, val)}
+                          />
+                        ) : (
+                          cellView(col.key, row, idx)
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
               <tr className="bg-[#f8fafc] dark:bg-slate-800/60">
                 <td
-                  colSpan={colsWithDelete.length}
+                  colSpan={COLS.length + (selectionMode ? 1 : 0)}
                   className="px-3 py-1.5 text-right text-[11px] font-semibold text-[#0f172a] dark:text-slate-100 border border-[#e2e8f0] dark:border-slate-700"
                 >
-                  Общая стоимость:
-                </td>
-                <td className="px-2 py-1.5 text-[11px] font-bold text-[#2563eb] dark:text-blue-400 border border-[#e2e8f0] dark:border-slate-700 whitespace-nowrap tabular-nums">
-                  {fmtPrice(total)}
+                  Общая стоимость: <span className="font-bold text-[#2563eb] dark:text-blue-400 tabular-nums ml-2">{fmtPrice(total)}</span>
                 </td>
               </tr>
             </tfoot>

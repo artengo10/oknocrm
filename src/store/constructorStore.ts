@@ -13,13 +13,13 @@ import {
 export type ShapeType = 'rect' | 'square' | 'arch' | 'triangle';
 
 export const SHAPE_OPTIONS: Record<ProdType, ShapeType[]> = {
-  window: ['rect', 'square', 'arch', 'triangle'],
+  window: ['rect', 'arch', 'triangle'],
   door: ['rect', 'arch'],
 };
 
 // ─── fitting types ────────────────────────────────────────────────────────────
 
-export type FittingType = 'luvers' | 'fran';
+export type FittingType = 'luvers' | 'fran' | 'remen';
 export type FittingSide = 'top' | 'bottom' | 'left' | 'right';
 
 export interface FittingItem {
@@ -34,37 +34,54 @@ export interface FittingItem {
 function buildFittings(
   width: number, height: number,
   okTop: number, okBot: number, okLeft: number, okRight: number,
-  spacingMm: number, openingType: string,
+  spacingTopMm: number, spacingBottomMm: number, spacingLeftMm: number, spacingRightMm: number,
+  openingType: string,
+  shape = 'rect',
 ): FittingItem[] {
-  const spacingCm = spacingMm / 10;
   const items: FittingItem[] = [];
   let counter = 0;
-
   const isFrance = openingType.includes('замок');
 
-  function genSide(side: FittingSide, sideLenCm: number, bandCm: number, type: FittingType) {
-    let pos = bandCm + spacingCm;
+  // For arch: the top portion of left/right sides is the arch curve — fittings there are invisible.
+  // Start side fittings below the arch curve.
+  const archHCm = shape === 'arch' ? Math.min(width / 2, height * 0.55) : 0;
+
+  function genSide(side: FittingSide, sideLenCm: number, bandCm: number, type: FittingType, spacingCm: number, minStartCm = 0) {
+    if (spacingCm <= 0) {
+      const fallbackNorm = Math.max((minStartCm + bandCm) / sideLenCm + 0.1, 0.5);
+      items.push({ id: `${side}-${counter++}`, side, posNorm: Math.min(fallbackNorm, 0.9), type });
+      return;
+    }
+    let pos = Math.max(bandCm + spacingCm, minStartCm + spacingCm);
     const endPos = sideLenCm - bandCm - spacingCm * 0.5;
-    while (pos <= endPos) {
+    let count = 0;
+    while (pos <= endPos && count < 40) {
       items.push({ id: `${side}-${counter++}`, side, posNorm: pos / sideLenCm, type });
       pos += spacingCm;
+      count++;
     }
     if (!items.some(f => f.side === side)) {
-      items.push({ id: `${side}-${counter++}`, side, posNorm: 0.5, type });
+      const midNorm = (Math.max(bandCm, minStartCm) + sideLenCm - bandCm) / 2 / sideLenCm;
+      items.push({ id: `${side}-${counter++}`, side, posNorm: midNorm, type });
     }
   }
 
-  genSide('top',    width,  okTop  / 10, 'luvers');
-  genSide('bottom', width,  okBot  / 10, isFrance ? 'fran' : 'luvers');
-  genSide('left',   height, okLeft / 10, isFrance ? 'fran' : 'luvers');
-  genSide('right',  height, okRight/ 10, isFrance ? 'fran' : 'luvers');
+  genSide('top',    width,  okTop  / 10, 'luvers',                     spacingTopMm    / 10);
+  genSide('bottom', width,  okBot  / 10, isFrance ? 'fran' : 'luvers', spacingBottomMm / 10);
+  genSide('left',   height, okLeft / 10, isFrance ? 'fran' : 'luvers', spacingLeftMm   / 10, archHCm);
+  genSide('right',  height, okRight/ 10, isFrance ? 'fran' : 'luvers', spacingRightMm  / 10, archHCm);
+
+  if (shape === 'rect' || shape === 'square') {
+    items.push({ id: 'remen-0', side: 'top', posNorm: 0.33, type: 'remen' });
+    items.push({ id: 'remen-1', side: 'top', posNorm: 0.67, type: 'remen' });
+  }
 
   return items;
 }
 
 // ─── store interface ──────────────────────────────────────────────────────────
 
-type FnKeys = 'setField' | 'toCalcInput' | 'generateFittings' | 'cycleFitting' | 'addFitting' | 'resetFittings' | 'undoFitting' | 'moveFitting' | 'removeFitting';
+type FnKeys = 'setField' | 'toCalcInput' | 'generateFittings' | 'cycleFitting' | 'addFitting' | 'resetFittings' | 'undoFitting' | 'redoFitting' | 'moveFitting' | 'removeFitting';
 
 interface ConstructorState {
   prodType: ProdType;
@@ -88,9 +105,16 @@ interface ConstructorState {
   okantovkaLeft: number;
   okantovkaRight: number;
   luverSpacing: number;
+  luverSpacingTop: number;
+  luverSpacingBottom: number;
+  luverSpacingLeft: number;
+  luverSpacingRight: number;
+  remenLength: number;  // cm, 0 = auto
+  remenWidth: number;   // cm, 0 = auto
 
   fittings: FittingItem[];
-  fittingsHistory: FittingItem[][];   // стек для отмены, макс 20 шагов
+  fittingsHistory: FittingItem[][];   // стек undo, макс 20 шагов
+  fittingsRedoStack: FittingItem[][];  // стек redo, макс 20 шагов
   fittingsCustomized: boolean;
 
   setField: <K extends keyof Omit<ConstructorState, FnKeys>>(key: K, value: ConstructorState[K]) => void;
@@ -99,6 +123,7 @@ interface ConstructorState {
   cycleFitting: (id: string) => void;
   addFitting: (side: FittingSide, posNorm: number, type?: FittingType) => void;
   undoFitting: () => void;
+  redoFitting: () => void;
   resetFittings: () => void;
   moveFitting: (id: string, posNorm: number) => void;
   removeFitting: (id: string) => void;
@@ -126,9 +151,16 @@ export const useConstructorStore = create<ConstructorState>((set, get) => ({
   okantovkaLeft: 70,
   okantovkaRight: 70,
   luverSpacing: 300,
+  luverSpacingTop: 300,
+  luverSpacingBottom: 300,
+  luverSpacingLeft: 300,
+  luverSpacingRight: 300,
+  remenLength: 0,
+  remenWidth: 0,
 
   fittings: [],
   fittingsHistory: [],
+  fittingsRedoStack: [],
   fittingsCustomized: false,
 
   setField: (key, value) => set({ [key]: value } as Pick<ConstructorState, typeof key>),
@@ -138,9 +170,10 @@ export const useConstructorStore = create<ConstructorState>((set, get) => ({
     const items = buildFittings(
       s.width, s.height,
       s.okantovkaTop, s.okantovkaBottom, s.okantovkaLeft, s.okantovkaRight,
-      s.luverSpacing, s.openingType,
+      s.luverSpacingTop, s.luverSpacingBottom, s.luverSpacingLeft, s.luverSpacingRight,
+      s.openingType, s.shape,
     );
-    set({ fittings: items, fittingsHistory: [], fittingsCustomized: false });
+    set({ fittings: items, fittingsHistory: [], fittingsRedoStack: [], fittingsCustomized: false });
   },
 
   cycleFitting: (id: string) => {
@@ -151,7 +184,7 @@ export const useConstructorStore = create<ConstructorState>((set, get) => ({
       const newFittings = f.type === 'luvers'
         ? state.fittings.map(x => x.id === id ? { ...x, type: 'fran' as FittingType } : x)
         : state.fittings.filter(x => x.id !== id);
-      return { fittings: newFittings, fittingsHistory: history, fittingsCustomized: true };
+      return { fittings: newFittings, fittingsHistory: history, fittingsRedoStack: [], fittingsCustomized: true };
     });
   },
 
@@ -160,6 +193,7 @@ export const useConstructorStore = create<ConstructorState>((set, get) => ({
     set(state => ({
       fittings: [...state.fittings, { id, side, posNorm, type }],
       fittingsHistory: [...state.fittingsHistory, state.fittings].slice(-20),
+      fittingsRedoStack: [],
       fittingsCustomized: true,
     }));
   },
@@ -169,10 +203,27 @@ export const useConstructorStore = create<ConstructorState>((set, get) => ({
       if (state.fittingsHistory.length === 0) return state;
       const history = [...state.fittingsHistory];
       const prev = history.pop()!;
+      const redoStack = [...state.fittingsRedoStack, state.fittings].slice(-20);
       return {
         fittings: prev,
         fittingsHistory: history,
-        fittingsCustomized: history.length > 0,
+        fittingsRedoStack: redoStack,
+        fittingsCustomized: true,
+      };
+    });
+  },
+
+  redoFitting: () => {
+    set(state => {
+      if (state.fittingsRedoStack.length === 0) return state;
+      const redoStack = [...state.fittingsRedoStack];
+      const next = redoStack.pop()!;
+      const history = [...state.fittingsHistory, state.fittings].slice(-20);
+      return {
+        fittings: next,
+        fittingsHistory: history,
+        fittingsRedoStack: redoStack,
+        fittingsCustomized: true,
       };
     });
   },
@@ -182,9 +233,10 @@ export const useConstructorStore = create<ConstructorState>((set, get) => ({
     const items = buildFittings(
       s.width, s.height,
       s.okantovkaTop, s.okantovkaBottom, s.okantovkaLeft, s.okantovkaRight,
-      s.luverSpacing, s.openingType,
+      s.luverSpacingTop, s.luverSpacingBottom, s.luverSpacingLeft, s.luverSpacingRight,
+      s.openingType, s.shape,
     );
-    set({ fittings: items, fittingsHistory: [], fittingsCustomized: false });
+    set({ fittings: items, fittingsHistory: [], fittingsRedoStack: [], fittingsCustomized: false });
   },
 
   moveFitting: (id, posNorm) => {
@@ -193,6 +245,7 @@ export const useConstructorStore = create<ConstructorState>((set, get) => ({
       return {
         fittings: state.fittings.map(f => f.id === id ? { ...f, posNorm } : f),
         fittingsHistory: history,
+        fittingsRedoStack: [],
         fittingsCustomized: true,
       };
     });
@@ -204,6 +257,7 @@ export const useConstructorStore = create<ConstructorState>((set, get) => ({
       return {
         fittings: state.fittings.filter(f => f.id !== id),
         fittingsHistory: history,
+        fittingsRedoStack: [],
         fittingsCustomized: true,
       };
     });

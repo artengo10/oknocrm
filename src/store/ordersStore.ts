@@ -5,7 +5,8 @@ import {
 } from '../api/orders';
 import { useConstructorStore } from './constructorStore';
 import { useSettingsStore } from './settingsStore';
-import { useTableStore } from './tableStore';
+import { useTableStore, type TableRow } from './tableStore';
+import { useOrderNamesStore } from './orderNamesStore';
 import { calculateCost } from '../lib/calculator';
 import type { ProdType, Material, FrameColor, GlassType, ExtraLockType, ExtraZipperType } from '../lib/calculator';
 import type { ShapeType } from './constructorStore';
@@ -112,6 +113,55 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
       const order = await apiCreateOrder();
       set((s) => ({ orders: [...s.orders, order] }));
       get().selectOrder(order.id);
+      const item = order.item;
+      if (item) {
+        const prices = useSettingsStore.getState().prices;
+        const result = calculateCost({
+          prodType: item.prodType as ProdType,
+          width: item.width,
+          height: item.height,
+          material: item.material as Material,
+          glass: item.glass as GlassType,
+          openingType: item.opening,
+          moskit: item.moskit,
+          pocket: item.pocket,
+          install: item.install,
+          extraLockType: (item.extraLockType ?? 'none') as ExtraLockType,
+          extraLockCount: item.extraLockCount ?? 1,
+          extraZipperType: (item.extraZipperType ?? 'none') as ExtraZipperType,
+          extraZipperLen: item.extraZipperLen ?? 100,
+          extraWorkPrice: item.extraWorkPrice ?? 0,
+        }, prices);
+        const row: TableRow = {
+          id: `auto-${Date.now()}`,
+          prodType: item.prodType,
+          shape: item.shape || 'rect',
+          size: `${item.height}×${item.width}`,
+          mat: item.material,
+          color: item.color,
+          glass: item.glass,
+          opening: item.opening,
+          moskit: item.moskit,
+          pocket: item.pocket,
+          install: item.install,
+          extraLockType: item.extraLockType ?? 'none',
+          extraLockCount: item.extraLockCount ?? 1,
+          extraZipperType: item.extraZipperType ?? 'none',
+          extraZipperLen: item.extraZipperLen ?? 100,
+          materialCost: result.materialCost,
+          fittingsCost: result.fittingsCost,
+          moskitCost: result.moskitCost,
+          pocketCost: result.pocketCost,
+          extraLockCost: result.extraLockCost,
+          extraZipperCost: result.extraZipperCost,
+          glassSurcharge: result.glassSurcharge,
+          installCost: result.installCost,
+          extraWorkPrice: result.extraWorkPrice,
+          extraWorkDesc: '',
+          price: result.finalTotal,
+        };
+        useTableStore.getState().addRow(order.id, row);
+      }
     } catch { /* ignore */ }
   },
 
@@ -122,6 +172,7 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
       const next = orders.filter((o) => o.id !== id);
       set({ orders: next });
       useTableStore.getState().clearOrder(id);
+      useOrderNamesStore.getState().clearName(id);
       if (activeOrderId === id && next.length > 0) {
         get().selectOrder(next[0].id);
       }

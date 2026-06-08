@@ -4,6 +4,7 @@ import { getFrameHex, getGlassHex } from '../../lib/calculator';
 import { useThemeStore } from '../../store/themeStore';
 import franSrc from '../../assets/fran.png';
 import luversSrc from '../../assets/luvers.svg';
+import remenSrc from '../../assets/remen.png';
 
 // ─── shape path builders ──────────────────────────────────────────────────────
 
@@ -236,14 +237,13 @@ function Fittings({ openingType, prodType, shape, ox, oy, w, h, ix, iy, iw, ih, 
   }
 
   if (hasZipper) {
-    const zipW = openingType.includes('трактор') ? 10 : 7;
-    const step  = openingType.includes('трактор') ? 10 : 9;
-    const zipH  = isFrance ? ih*0.7 : ih;
-    [ix+iw*0.15, ix+iw*0.85].forEach((zx,zi) => {
-      el.push(<rect key={`wzb${zi}`} x={zx-zipW/2} y={iy} width={zipW} height={zipH} fill="#e8e8e8" stroke="#444" strokeWidth="1.2" rx="1"/>);
-      for (let z=0; z<Math.floor(zipH/step); z++) {
-        el.push(<rect key={`wzt${zi}-${z}`} x={zx-2} y={iy+4+z*step} width={4} height={2.2} fill="#555" rx="0.7"/>);
-      }
+    const isTwo2 = openingType.startsWith('2 молнии');
+    const bandW  = ix - ox;
+    const zipW   = Math.max(8, bandW * 2);
+    const zipH   = isFrance ? ih * 0.7 : ih;
+    const zxArr2 = isTwo2 ? [ix+iw*0.33, ix+iw*0.67] : [ix+iw/2];
+    zxArr2.forEach((zx, zi) => {
+      el.push(<rect key={`wzb${zi}`} x={zx - zipW/2} y={iy} width={zipW} height={zipH} fill="#111" />);
     });
   }
   return <>{el}</>;
@@ -256,9 +256,9 @@ function LuverRulers({ ox, oy, w, h, bandPx, spacingPx, pxPerCm, shape }: {
   bandPx:number; spacingPx:number; pxPerCm:number; shape:string;
 }) {
   if (pxPerCm <= 0 || spacingPx <= 0) return null;
-  const lc = '#94a3b8';
-  const tc = '#475569';
-  const fs = 7;
+  const lc = '#64748b';
+  const tc = '#1e293b';
+  const fs = 9;
   const tk = 5;
 
   const showRect = shape === 'rect' || shape === 'square';
@@ -313,6 +313,11 @@ function LuverRulers({ ox, oy, w, h, bandPx, spacingPx, pxPerCm, shape }: {
 function FittingsInteractive({
   fittings, vox, voy, visW, visH, autoBandPx,
   containerRef, vt, selectedId, onSelect, onStripClick, moveFitting,
+  localPos, setLocalPos,
+  shape, ix, iy, iw, ih,
+  prodType, openingType,
+  remenLengthPx, remenWidthPx,
+  frameFill, innerPath,
 }: {
   fittings: FittingItem[];
   vox: number; voy: number; visW: number; visH: number;
@@ -323,15 +328,26 @@ function FittingsInteractive({
   onSelect: (id: string | null) => void;
   onStripClick: (side: FittingSide, posNorm: number, clientX: number, clientY: number) => void;
   moveFitting: (id: string, posNorm: number) => void;
+  localPos: Record<string, number>;
+  setLocalPos: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  shape: string;
+  ix: number; iy: number; iw: number; ih: number;
+  prodType: string;
+  openingType: string;
+  remenLengthPx: number;
+  remenWidthPx: number;
+  frameFill: string;
+  innerPath: string;
 }) {
   const [ghost, setGhost] = useState<{ side: FittingSide; cx: number; cy: number } | null>(null);
-  const [localPos, setLocalPos] = useState<Record<string, number>>({});
   const vtRef = useRef(vt);
   useEffect(() => { vtRef.current = vt; }, [vt]);
 
-  const band = Math.min(autoBandPx, 20);
-  const r    = Math.max(4, band * 0.32);
-  const sz   = r * 2;
+  // Реальная толщина рамы для rect/square — из ix/iy.
+  // Для arch/triangle используем autoBandPx (приближение).
+  const realBand = (shape === 'rect' || shape === 'square') ? (iy - voy) : autoBandPx;
+  const r  = Math.max(4, Math.min(realBand * 0.27, 15));
+  const sz = r * 2;
 
   function screenToSvg(clientX: number, clientY: number) {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -343,38 +359,86 @@ function FittingsInteractive({
     };
   }
 
-  function getPosNorm(clientX: number, clientY: number, side: FittingSide): number {
-    const { x, y } = screenToSvg(clientX, clientY);
-    const raw = (side === 'top' || side === 'bottom')
-      ? (x - vox) / visW
-      : (y - voy) / visH;
-    return Math.max(0.02, Math.min(0.98, raw));
+  // Returns SVG position for a fitting, or null if invisible for this shape
+  function fittingPx(side: FittingSide, posNorm: number): { cx: number; cy: number } | null {
+    if (shape === 'arch') {
+      const arcCy  = iy;
+      const ryOut  = iy - voy;
+      const rxOut  = visW / 2;
+      const arcCx  = vox + visW / 2;
+      if (side === 'top') {
+        const x    = vox + posNorm * visW;
+        const cosA = Math.max(-1, Math.min(1, (x - arcCx) / rxOut));
+        const yOut = arcCy - ryOut * Math.sin(Math.acos(cosA));
+        return { cx: x, cy: yOut + autoBandPx / 2 };
+      }
+      if (side === 'left')  {
+        const cy = voy + posNorm * visH;
+        return cy < arcCy ? null : { cx: vox + autoBandPx / 2, cy };
+      }
+      if (side === 'right') {
+        const cy = voy + posNorm * visH;
+        return cy < arcCy ? null : { cx: vox + visW - autoBandPx / 2, cy };
+      }
+      // bottom
+      return { cx: vox + posNorm * visW, cy: voy + visH - autoBandPx / 2 };
+    }
+
+    if (shape === 'triangle') {
+      if (side === 'top') return null; // triangle has no horizontal top edge
+      if (side === 'bottom') return { cx: vox + posNorm * visW, cy: voy + visH - autoBandPx / 2 };
+      // left/right diagonal: interpolate midpoint between outer and inner edge
+      const tipO = { x: vox + visW / 2, y: voy };
+      const tipI = { x: vox + visW / 2, y: iy };
+      const endO = side === 'left' ? { x: vox,       y: voy + visH } : { x: vox + visW,  y: voy + visH };
+      const endI = side === 'left' ? { x: ix,         y: iy + ih    } : { x: ix + iw,     y: iy + ih    };
+      const pO   = { x: tipO.x + posNorm * (endO.x - tipO.x), y: tipO.y + posNorm * (endO.y - tipO.y) };
+      const pI   = { x: tipI.x + posNorm * (endI.x - tipI.x), y: tipI.y + posNorm * (endI.y - tipI.y) };
+      return { cx: (pO.x + pI.x) / 2, cy: (pO.y + pI.y) / 2 };
+    }
+
+    // rect / square — используем реальные границы рамы из ix/iy/iw/ih
+    {
+      const topBand = iy - voy;
+      const botBand = (voy + visH) - (iy + ih);
+      const lftBand = ix - vox;
+      const rgtBand = (vox + visW) - (ix + iw);
+      switch (side) {
+        case 'top':    return { cx: vox + posNorm * visW,  cy: voy + topBand / 2 };
+        case 'bottom': return { cx: vox + posNorm * visW,  cy: iy + ih + botBand / 2 };
+        case 'left':   return { cx: vox + lftBand / 2,     cy: voy + posNorm * visH };
+        case 'right':  return { cx: ix + iw + rgtBand / 2, cy: voy + posNorm * visH };
+      }
+    }
   }
 
-  function fittingPx(side: FittingSide, posNorm: number) {
-    switch (side) {
-      case 'top':    return { cx: vox + posNorm * visW,          cy: voy + autoBandPx / 2 };
-      case 'bottom': return { cx: vox + posNorm * visW,          cy: voy + visH - autoBandPx / 2 };
-      case 'left':   return { cx: vox + autoBandPx / 2,          cy: voy + posNorm * visH };
-      case 'right':  return { cx: vox + visW - autoBandPx / 2,   cy: voy + posNorm * visH };
+  function getPosNorm(clientX: number, clientY: number, side: FittingSide): number {
+    const { x, y } = screenToSvg(clientX, clientY);
+    if (shape === 'triangle' && (side === 'left' || side === 'right')) {
+      // project mouse onto the outer diagonal to get parameter t
+      const tipO = { x: vox + visW / 2, y: voy };
+      const endO = side === 'left' ? { x: vox, y: voy + visH } : { x: vox + visW, y: voy + visH };
+      const dx = endO.x - tipO.x, dy = endO.y - tipO.y;
+      const len2 = dx * dx + dy * dy;
+      const t = len2 > 0 ? ((x - tipO.x) * dx + (y - tipO.y) * dy) / len2 : 0;
+      return Math.max(0.02, Math.min(0.98, t));
     }
+    const raw = (side === 'top' || side === 'bottom') ? (x - vox) / visW : (y - voy) / visH;
+    return Math.max(0.02, Math.min(0.98, raw));
   }
 
   function startDrag(e: React.MouseEvent, f: FittingItem) {
     e.stopPropagation();
     onSelect(f.id);
-    const side = f.side;
     document.body.style.cursor = 'grabbing';
-
     function onMove(ev: MouseEvent) {
-      const pn = getPosNorm(ev.clientX, ev.clientY, side);
-      setLocalPos(prev => ({ ...prev, [f.id]: pn }));
+      setLocalPos(prev => ({ ...prev, [f.id]: getPosNorm(ev.clientX, ev.clientY, f.side) }));
     }
     function onUp(ev: MouseEvent) {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       document.body.style.cursor = '';
-      const pn = getPosNorm(ev.clientX, ev.clientY, side);
+      const pn = getPosNorm(ev.clientX, ev.clientY, f.side);
       moveFitting(f.id, pn);
       setLocalPos(prev => { const n = { ...prev }; delete n[f.id]; return n; });
     }
@@ -382,32 +446,97 @@ function FittingsInteractive({
     document.addEventListener('mouseup', onUp);
   }
 
-  const strips: { side: FittingSide; x: number; y: number; w: number; h: number }[] = [
-    { side: 'top',    x: vox,                 y: voy,                 w: visW,       h: autoBandPx },
-    { side: 'bottom', x: vox,                 y: voy+visH-autoBandPx, w: visW,       h: autoBandPx },
-    { side: 'left',   x: vox,                 y: voy+autoBandPx,      w: autoBandPx, h: visH-2*autoBandPx },
-    { side: 'right',  x: vox+visW-autoBandPx, y: voy+autoBandPx,      w: autoBandPx, h: visH-2*autoBandPx },
-  ];
+  // ── build strip hit-areas based on shape ─────────────────────────────────────
+
+  // Rect-based strips for sides that are straight lines
+  const rectStrips: { side: FittingSide; x: number; y: number; w: number; h: number }[] =
+    (shape === 'arch') ? [
+      { side: 'left',   x: vox,                 y: iy,                  w: autoBandPx, h: visH - (iy - voy) },
+      { side: 'right',  x: vox+visW-autoBandPx, y: iy,                  w: autoBandPx, h: visH - (iy - voy) },
+      { side: 'bottom', x: vox,                 y: voy+visH-autoBandPx, w: visW,       h: autoBandPx },
+    ] : (shape === 'triangle') ? [
+      { side: 'bottom', x: vox, y: voy+visH-autoBandPx, w: visW, h: autoBandPx },
+    ] : [
+      { side: 'top',    x: vox,                 y: voy,                 w: visW,       h: autoBandPx },
+      { side: 'bottom', x: vox,                 y: voy+visH-autoBandPx, w: visW,       h: autoBandPx },
+      { side: 'left',   x: vox,                 y: voy+autoBandPx,      w: autoBandPx, h: visH-2*autoBandPx },
+      { side: 'right',  x: vox+visW-autoBandPx, y: voy+autoBandPx,      w: autoBandPx, h: visH-2*autoBandPx },
+    ];
+
+  // Arch top band path
+  const archTopBand = shape === 'arch' ? (() => {
+    const arcCy  = iy, ryOut = iy - voy, rxOut = visW / 2;
+    const ryIn   = Math.max(0, ryOut - (ix - vox));
+    const rxIn   = iw / 2;
+    const arcCx  = vox + visW / 2;
+    return `M${vox},${arcCy} A${rxOut},${ryOut},0,0,1,${vox+visW},${arcCy}`
+         + ` L${arcCx+rxIn},${arcCy} A${rxIn},${ryIn},0,0,0,${arcCx-rxIn},${arcCy} Z`;
+  })() : null;
+
+  // Triangle diagonal band paths
+  function triSidePath(side: 'left' | 'right') {
+    const tipO = { x: vox + visW / 2, y: voy };
+    const tipI = { x: vox + visW / 2, y: iy };
+    const endO = side === 'left' ? { x: vox,      y: voy + visH } : { x: vox + visW, y: voy + visH };
+    const endI = side === 'left' ? { x: ix,        y: iy + ih    } : { x: ix + iw,   y: iy + ih    };
+    return `M${tipO.x},${tipO.y} L${endO.x},${endO.y} L${endI.x},${endI.y} L${tipI.x},${tipI.y} Z`;
+  }
+
+  function stripHandlers(side: FittingSide) {
+    return {
+      onMouseDown: (e: React.MouseEvent) => e.stopPropagation(),
+      onClick: (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const pn = getPosNorm(e.clientX, e.clientY, side);
+        onStripClick(side, pn, e.clientX, e.clientY);
+        setGhost(null);
+      },
+      onMouseMove: (e: React.MouseEvent) => {
+        const pn = getPosNorm(e.clientX, e.clientY, side);
+        const pos = fittingPx(side, pn);
+        if (pos) setGhost({ side, ...pos });
+      },
+      onMouseLeave: () => setGhost(null),
+    };
+  }
 
   return <>
-    {/* Кликабельные полосы рамки — открывают панель выбора типа */}
-    {strips.map(s => (
+    {rectStrips.map(s => (
       <rect key={s.side} x={s.x} y={s.y} width={s.w} height={s.h}
         fill="transparent" style={{ cursor: 'crosshair' }}
-        onMouseDown={e => e.stopPropagation()}
-        onClick={e => {
-          e.stopPropagation();
-          const pn = getPosNorm(e.clientX, e.clientY, s.side);
-          onStripClick(s.side, pn, e.clientX, e.clientY);
-          setGhost(null);
-        }}
-        onMouseMove={e => {
-          const pn = getPosNorm(e.clientX, e.clientY, s.side);
-          setGhost({ side: s.side, ...fittingPx(s.side, pn) });
-        }}
-        onMouseLeave={() => setGhost(null)}
+        {...stripHandlers(s.side)}
       />
     ))}
+    {archTopBand && (
+      <path d={archTopBand} fill="transparent" style={{ cursor: 'crosshair' }}
+        {...stripHandlers('top')} />
+    )}
+    {shape === 'triangle' && (['left', 'right'] as const).map(side => (
+      <path key={side} d={triSidePath(side)} fill="transparent" style={{ cursor: 'crosshair' }}
+        {...stripHandlers(side)} />
+    ))}
+
+    {/* Молния */}
+    {openingType.includes('молни') && innerPath && (() => {
+      const isTwo  = openingType.startsWith('2 молнии');
+      const bandW  = Math.max(4, Math.round((ix - vox) * 0.55));
+      const zipW   = 5;
+      const zxArr  = isTwo ? [ix + iw * 0.33, ix + iw * 0.67] : [ix + iw / 2];
+      return <>
+        <defs>
+          <clipPath id="zipper-inner-clip">
+            <path d={innerPath}/>
+          </clipPath>
+        </defs>
+        {zxArr.map((zx, zi) => (
+          <g key={`zip${zi}`} style={{ pointerEvents: 'none' }} clipPath="url(#zipper-inner-clip)">
+            <rect x={zx - bandW - zipW/2} y={voy} width={bandW} height={visH} fill={frameFill}/>
+            <rect x={zx - zipW/2} y={voy} width={zipW} height={visH} fill="#111"/>
+            <rect x={zx + zipW/2} y={voy} width={bandW} height={visH} fill={frameFill}/>
+          </g>
+        ))}
+      </>;
+    })()}
 
     {/* Ghost при наведении */}
     {ghost && (() => {
@@ -418,13 +547,47 @@ function FittingsInteractive({
         transform={tf} opacity={0.35} style={{ pointerEvents: 'none' }}/>;
     })()}
 
-    {/* Сами люверсы/замки: drag для перемещения */}
+    {/* Люверсы/замки/ремни: drag для перемещения */}
     {fittings.map(f => {
+      // Straps only for rect/square shapes
+      if (f.type === 'remen' && shape !== 'rect' && shape !== 'square') return null;
       const posNorm = localPos[f.id] ?? f.posNorm;
-      const { cx, cy } = fittingPx(f.side, posNorm);
-      const isV = f.side === 'left' || f.side === 'right';
-      const tf  = isV ? `rotate(90,${cx},${cy})` : undefined;
+      const pos = fittingPx(f.side, posNorm);
+      if (!pos) return null;
+      const { cx, cy } = pos;
+      const isV  = f.side === 'left' || f.side === 'right';
       const isSelected = f.id === selectedId;
+
+      if (f.type === 'remen') {
+        const L    = remenLengthPx > 0 ? remenLengthPx : Math.min(ih * 0.48, 108);
+        const Wimg = remenWidthPx  > 0 ? remenWidthPx  : L / 7;
+        // For side straps hang from cy (fitting position); for top hang from iy (frame inner edge)
+        const strapY = isV ? cy : iy;
+        const tf     = `translate(${cx},${strapY + L/2}) rotate(90) translate(${-L/2},${-Wimg/2})`;
+        return (
+          <g key={f.id} style={{ cursor: 'grab' }}
+            onMouseDown={e => startDrag(e, f)}
+            onClick={e => e.stopPropagation()}
+          >
+            {isSelected && (
+              <rect x={cx - Wimg/2 - 3} y={strapY - 3}
+                width={Wimg + 6} height={L + 6}
+                fill="none" stroke="#2563eb" strokeWidth="1.5" strokeDasharray="3,2" rx="2"/>
+            )}
+            <image href={remenSrc} x={0} y={0} width={L} height={Wimg}
+              transform={tf} preserveAspectRatio="none"/>
+          </g>
+        );
+      }
+
+      let tf: string | undefined;
+      if (shape === 'triangle' && f.side === 'left') {
+        tf = `rotate(${Math.atan2(visH, -visW / 2) * 180 / Math.PI},${cx},${cy})`;
+      } else if (shape === 'triangle' && f.side === 'right') {
+        tf = `rotate(${-Math.atan2(visH, visW / 2) * 180 / Math.PI},${cx},${cy})`;
+      } else if (isV) {
+        tf = `rotate(90,${cx},${cy})`;
+      }
       return (
         <g key={f.id} style={{ cursor: 'grab' }}
           onMouseDown={e => startDrag(e, f)}
@@ -453,34 +616,58 @@ function LuverRulersFromFittings({ fittings, vox, voy, visW, visH, pxPerCm }: {
   fittings: FittingItem[]; vox: number; voy: number; visW: number; visH: number; pxPerCm: number;
 }) {
   const lc = '#94a3b8', tc = '#475569', fs = 7, tk = 5;
-  const topF  = fittings.filter(f => f.side === 'top' ).sort((a,b) => a.posNorm - b.posNorm);
-  const leftF = fittings.filter(f => f.side === 'left').sort((a,b) => a.posNorm - b.posNorm);
-  const hXs = [vox, ...topF.map(f  => vox + f.posNorm * visW), vox + visW];
-  const vYs = [voy, ...leftF.map(f => voy + f.posNorm * visH), voy + visH];
-  const hY = voy - 16, vX = vox - 20;
-  return <>
-    {topF.length > 0 && <>
-      <line x1={vox} y1={hY} x2={vox+visW} y2={hY} stroke={lc} strokeWidth="0.8"/>
-      {hXs.map((x, i) => <g key={`hr${i}`}>
-        <line x1={x} y1={hY-tk} x2={x} y2={hY+tk} stroke={lc} strokeWidth="0.8"/>
-        {i < hXs.length-1 && (
-          <text x={(x+hXs[i+1])/2} y={hY-8} fontSize={fs} fill={tc} textAnchor="middle"
-            fontFamily="system-ui,sans-serif">{((hXs[i+1]-x)/pxPerCm).toFixed(1)}</text>
-        )}
-      </g>)}
-    </>}
-    {leftF.length > 0 && <>
-      <line x1={vX} y1={voy} x2={vX} y2={voy+visH} stroke={lc} strokeWidth="0.8"/>
-      {vYs.map((y, i) => <g key={`vr${i}`}>
-        <line x1={vX-tk} y1={y} x2={vX+tk} y2={y} stroke={lc} strokeWidth="0.8"/>
-        {i < vYs.length-1 && (
-          <text x={vX-8} y={(y+vYs[i+1])/2} fontSize={fs} fill={tc} textAnchor="end"
-            fontFamily="system-ui,sans-serif" dominantBaseline="middle">
-            {((vYs[i+1]-y)/pxPerCm).toFixed(1)}
+
+  const topF    = fittings.filter(f => f.side === 'top'   ).sort((a,b) => a.posNorm - b.posNorm);
+  const bottomF = fittings.filter(f => f.side === 'bottom').sort((a,b) => a.posNorm - b.posNorm);
+  const leftF   = fittings.filter(f => f.side === 'left'  ).sort((a,b) => a.posNorm - b.posNorm);
+  const rightF  = fittings.filter(f => f.side === 'right' ).sort((a,b) => a.posNorm - b.posNorm);
+
+  const topXs    = [vox, ...topF.map(f    => vox + f.posNorm * visW), vox + visW];
+  const bottomXs = [vox, ...bottomF.map(f => vox + f.posNorm * visW), vox + visW];
+  const leftYs   = [voy, ...leftF.map(f   => voy + f.posNorm * visH), voy + visH];
+  const rightYs  = [voy, ...rightF.map(f  => voy + f.posNorm * visH), voy + visH];
+
+  const topY    = voy - 16;
+  const bottomY = voy + visH + 16;
+  const leftX   = vox - 20;
+  const rightX  = vox + visW + 22;
+
+  function hRuler(key: string, y: number, xs: number[], labelsBelow: boolean) {
+    return <>
+      <line x1={vox} y1={y} x2={vox + visW} y2={y} stroke={lc} strokeWidth="0.8"/>
+      {xs.map((x, i) => <g key={`${key}${i}`}>
+        <line x1={x} y1={y - tk} x2={x} y2={y + tk} stroke={lc} strokeWidth="0.8"/>
+        {i < xs.length - 1 && (
+          <text x={(x + xs[i + 1]) / 2} y={labelsBelow ? y + 14 : y - 8}
+            fontSize={fs} fill={tc} textAnchor="middle" fontFamily="system-ui,sans-serif">
+            {((xs[i + 1] - x) / pxPerCm).toFixed(1)}
           </text>
         )}
       </g>)}
-    </>}
+    </>;
+  }
+
+  function vRuler(key: string, x: number, ys: number[], labelsRight: boolean) {
+    return <>
+      <line x1={x} y1={voy} x2={x} y2={voy + visH} stroke={lc} strokeWidth="0.8"/>
+      {ys.map((y, i) => <g key={`${key}${i}`}>
+        <line x1={x - tk} y1={y} x2={x + tk} y2={y} stroke={lc} strokeWidth="0.8"/>
+        {i < ys.length - 1 && (
+          <text x={labelsRight ? x + 8 : x - 8} y={(y + ys[i + 1]) / 2}
+            fontSize={fs} fill={tc} textAnchor={labelsRight ? 'start' : 'end'}
+            fontFamily="system-ui,sans-serif" dominantBaseline="middle">
+            {((ys[i + 1] - y) / pxPerCm).toFixed(1)}
+          </text>
+        )}
+      </g>)}
+    </>;
+  }
+
+  return <>
+    {topF.length    > 0 && hRuler('ht', topY,    topXs,    false)}
+    {bottomF.length > 0 && hRuler('hb', bottomY, bottomXs, true)}
+    {leftF.length   > 0 && vRuler('vl', leftX,   leftYs,   false)}
+    {rightF.length  > 0 && vRuler('vr', rightX,  rightYs,  true)}
   </>;
 }
 
@@ -489,20 +676,20 @@ function LuverRulersFromFittings({ fittings, vox, voy, visW, visH, pxPerCm }: {
 function Annotations({ ox, oy, shapeW, shapeH, width, height }: {
   ox:number; oy:number; shapeW:number; shapeH:number; width:number; height:number;
 }) {
-  const tick=8, hLX=ox+shapeW+22, wLY=oy+shapeH+24;
+  const tick=8, hLX=ox+shapeW+85, wLY=oy+shapeH+52;
   return <>
-    <text x={ox-13} y={oy-4} fontSize="9" fill="#94a3b8" fontWeight="600">A</text>
-    <text x={ox+shapeW+4} y={oy-4} fontSize="9" fill="#94a3b8" fontWeight="600">B</text>
-    <text x={ox-13} y={oy+shapeH+13} fontSize="9" fill="#94a3b8" fontWeight="600">D</text>
-    <text x={ox+shapeW+4} y={oy+shapeH+13} fontSize="9" fill="#94a3b8" fontWeight="600">C</text>
-    <line x1={hLX} y1={oy} x2={hLX} y2={oy+shapeH} stroke="#94a3b8" strokeWidth="1.5"/>
-    <line x1={hLX-tick} y1={oy} x2={hLX+tick} y2={oy} stroke="#94a3b8" strokeWidth="1.5"/>
-    <line x1={hLX-tick} y1={oy+shapeH} x2={hLX+tick} y2={oy+shapeH} stroke="#94a3b8" strokeWidth="1.5"/>
-    <text x={hLX+13} y={oy+shapeH/2+5} fontSize="13" fill="#334155" fontWeight="700">{height} см</text>
-    <line x1={ox} y1={wLY} x2={ox+shapeW} y2={wLY} stroke="#94a3b8" strokeWidth="1.5"/>
-    <line x1={ox} y1={wLY-tick} x2={ox} y2={wLY+tick} stroke="#94a3b8" strokeWidth="1.5"/>
-    <line x1={ox+shapeW} y1={wLY-tick} x2={ox+shapeW} y2={wLY+tick} stroke="#94a3b8" strokeWidth="1.5"/>
-    <text x={ox+shapeW/2-22} y={wLY+18} fontSize="13" fill="#334155" fontWeight="700">{width} см</text>
+    <text x={ox-14} y={oy-4} fontSize="11" fill="#64748b" fontWeight="700">A</text>
+    <text x={ox+shapeW+4} y={oy-4} fontSize="11" fill="#64748b" fontWeight="700">B</text>
+    <text x={ox-14} y={oy+shapeH+14} fontSize="11" fill="#64748b" fontWeight="700">D</text>
+    <text x={ox+shapeW+4} y={oy+shapeH+14} fontSize="11" fill="#64748b" fontWeight="700">C</text>
+    <line x1={hLX} y1={oy} x2={hLX} y2={oy+shapeH} stroke="#64748b" strokeWidth="1.5"/>
+    <line x1={hLX-tick} y1={oy} x2={hLX+tick} y2={oy} stroke="#64748b" strokeWidth="1.5"/>
+    <line x1={hLX-tick} y1={oy+shapeH} x2={hLX+tick} y2={oy+shapeH} stroke="#64748b" strokeWidth="1.5"/>
+    <text x={hLX+13} y={oy+shapeH/2+5} fontSize="15" fill="#0f172a" fontWeight="800">{height} см</text>
+    <line x1={ox} y1={wLY} x2={ox+shapeW} y2={wLY} stroke="#64748b" strokeWidth="1.5"/>
+    <line x1={ox} y1={wLY-tick} x2={ox} y2={wLY+tick} stroke="#64748b" strokeWidth="1.5"/>
+    <line x1={ox+shapeW} y1={wLY-tick} x2={ox+shapeW} y2={wLY+tick} stroke="#64748b" strokeWidth="1.5"/>
+    <text x={ox+shapeW/2-24} y={wLY+18} fontSize="15" fill="#0f172a" fontWeight="800">{width} см</text>
   </>;
 }
 
@@ -534,6 +721,7 @@ export function WindowVisualizer() {
   const [vt, setVt] = useState({ scale: 1, x: 0, y: 0 });
   const [selectedFittingId, setSelectedFittingId] = useState<string | null>(null);
   const [pendingAdd, setPendingAdd] = useState<PendingAdd | null>(null);
+  const [localPos, setLocalPos] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const el = containerRef.current;
@@ -586,8 +774,10 @@ export function WindowVisualizer() {
   const {
     width, height, color, glass, shape, prodType, openingType, material,
     okantovkaTop, okantovkaBottom, okantovkaLeft, okantovkaRight, luverSpacing,
-    fittings, fittingsHistory, fittingsCustomized,
-    generateFittings, addFitting, undoFitting, resetFittings, moveFitting, removeFitting,
+    luverSpacingTop, luverSpacingBottom, luverSpacingLeft, luverSpacingRight,
+    remenLength, remenWidth,
+    fittings, fittingsHistory, fittingsRedoStack, fittingsCustomized,
+    generateFittings, addFitting, undoFitting, redoFitting, resetFittings, moveFitting, removeFitting,
   } = useConstructorStore();
   const isDark = useThemeStore((s) => s.theme === 'dark');
 
@@ -595,7 +785,12 @@ export function WindowVisualizer() {
   useEffect(() => {
     if (!fittingsCustomized) generateFittings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [width, height, luverSpacing, okantovkaTop, okantovkaBottom, okantovkaLeft, okantovkaRight, openingType, generateFittings]);
+  }, [
+    width, height, luverSpacing,
+    luverSpacingTop, luverSpacingBottom, luverSpacingLeft, luverSpacingRight,
+    okantovkaTop, okantovkaBottom, okantovkaLeft, okantovkaRight,
+    openingType, generateFittings,
+  ]);
 
   // Delete/Backspace удаляет выделенный фиттинг; Escape снимает выделение
   useEffect(() => {
@@ -619,7 +814,7 @@ export function WindowVisualizer() {
   const frameHex = getFrameHex(color);
   const glassHex = getGlassHex(glass, isDark);
 
-  const PAD_T = 44, PAD_L = 56, PAD_R = 100, PAD_B = 72;
+  const PAD_T = 44, PAD_L = 56, PAD_R = 155, PAD_B = 96;
   const maxW = size.w - PAD_L - PAD_R;
   const maxH = size.h - PAD_T - PAD_B;
 
@@ -629,13 +824,13 @@ export function WindowVisualizer() {
   const ox = PAD_L + (maxW - shapeW) / 2;
   const oy = PAD_T + (maxH - shapeH) / 2;
 
-  // Визуальная окантовка: 4.5% меньшей стороны, но не меньше 8px и не больше 38px.
-  // Пользовательские значения (мм) влияют только на расчёт цены, не на отрисовку.
+  // autoBandPx используется для FittingsInteractive (полосы клика, иконки)
   const autoBandPx = Math.max(8, Math.min(Math.min(shapeW, shapeH) * 0.045, 38));
-  const okL = autoBandPx;
-  const okR = autoBandPx;
-  const okT = autoBandPx;
-  const okB = autoBandPx;
+  // Визуальная окантовка берётся из реальных значений пользователя (мм → px)
+  const okT = Math.max(4, (okantovkaTop    / 10) * scale);
+  const okB = Math.max(4, (okantovkaBottom / 10) * scale);
+  const okL = Math.max(4, (okantovkaLeft   / 10) * scale);
+  const okR = Math.max(4, (okantovkaRight  / 10) * scale);
 
   // square: force equal sides
   const visW = shape==='square' ? Math.min(shapeW,shapeH) : shapeW;
@@ -664,8 +859,8 @@ export function WindowVisualizer() {
       onClick={() => { setSelectedFittingId(null); setPendingAdd(null); }}
       style={{ cursor: 'grab' }}
     >
-      {/* Кнопки отмены / сброса (только для rect/square) */}
-      {(shape === 'rect' || shape === 'square') && (
+      {/* Кнопки отмены / сброса */}
+      {(
         <div className="absolute top-2 left-2 z-10 flex gap-1.5" onMouseDown={e => e.stopPropagation()}>
           <button
             onClick={undoFitting}
@@ -676,13 +871,21 @@ export function WindowVisualizer() {
             ↩ Отменить
           </button>
           <button
-            onClick={resetFittings}
-            disabled={!fittingsCustomized}
-            title="Сбросить к авто-расстановке"
+            onClick={redoFitting}
+            disabled={fittingsRedoStack.length === 0}
+            title="Вернуть отменённое действие"
             className="px-2 py-1 text-[11px] font-medium bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded shadow-sm transition-colors disabled:opacity-35 disabled:cursor-not-allowed"
           >
-            ✕ Сбросить
+            ↪ Вернуть
           </button>
+          {selectedFittingId && (
+            <button
+              onClick={() => { removeFitting(selectedFittingId); setSelectedFittingId(null); }}
+              className="px-2 py-1 text-[11px] font-medium bg-red-500 hover:bg-red-600 text-white rounded shadow-sm transition-colors"
+            >
+              🗑 Удалить
+            </button>
+          )}
         </div>
       )}
 
@@ -772,37 +975,34 @@ export function WindowVisualizer() {
         </defs>
         <path d={outer} fill={frameFill} />
         {inner && <path d={inner} fill={glassHex} />}
-        {(shape === 'rect' || shape === 'square') ? (
-          <>
-            <FittingsInteractive
-              fittings={fittings} vox={vox} voy={voy} visW={visW} visH={visH}
-              autoBandPx={autoBandPx}
-              containerRef={containerRef} vt={vt}
-              selectedId={selectedFittingId}
-              onSelect={setSelectedFittingId}
-              onStripClick={(side, posNorm, clientX, clientY) => {
-                const rect = containerRef.current?.getBoundingClientRect();
-                if (!rect) return;
-                setSelectedFittingId(null);
-                setPendingAdd({ side, posNorm, left: clientX - rect.left, top: clientY - rect.top });
-              }}
-              moveFitting={moveFitting}
-            />
-            <LuverRulersFromFittings
-              fittings={fittings} vox={vox} voy={voy} visW={visW} visH={visH} pxPerCm={scale}
-            />
-          </>
-        ) : (
-          <>
-            <Fittings openingType={openingType} prodType={prodType} shape={shape}
-              ox={vox} oy={voy} w={visW} h={visH} ix={ix} iy={iy} iw={iw} ih={ih}
-              luverSpacing={luverSpacing} pxPerCm={scale} />
-            <LuverRulers
-              ox={vox} oy={voy} w={visW} h={visH}
-              bandPx={autoBandPx} spacingPx={(luverSpacing / 10) * scale}
-              pxPerCm={scale} shape={shape} />
-          </>
-        )}
+        <>
+          <FittingsInteractive
+            fittings={fittings} vox={vox} voy={voy} visW={visW} visH={visH}
+            autoBandPx={autoBandPx}
+            containerRef={containerRef} vt={vt}
+            selectedId={selectedFittingId}
+            onSelect={setSelectedFittingId}
+            onStripClick={(side, posNorm, clientX, clientY) => {
+              const rect = containerRef.current?.getBoundingClientRect();
+              if (!rect) return;
+              setSelectedFittingId(null);
+              setPendingAdd({ side, posNorm, left: clientX - rect.left, top: clientY - rect.top });
+            }}
+            moveFitting={moveFitting}
+            localPos={localPos}
+            setLocalPos={setLocalPos}
+            shape={shape} ix={ix} iy={iy} iw={iw} ih={ih}
+            prodType={prodType} openingType={openingType}
+            remenLengthPx={remenLength > 0 ? remenLength * scale : 0}
+            remenWidthPx={remenWidth > 0 ? remenWidth * scale : 0}
+            frameFill={frameFill}
+            innerPath={inner ?? ''}
+          />
+          <LuverRulersFromFittings
+            fittings={fittings.map(f => localPos[f.id] !== undefined ? { ...f, posNorm: localPos[f.id] } : f)}
+            vox={vox} voy={voy} visW={visW} visH={visH} pxPerCm={scale}
+          />
+        </>
         <Annotations ox={vox} oy={voy} shapeW={visW} shapeH={visH} width={width} height={height} />
       </svg>
     </div>

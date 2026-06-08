@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ResultsBlock } from '../constructor/ResultsBlock';
 import { apiGetPrices } from '../../api/settings';
 import { DEFAULT_PRICES, type CalcPrices } from '../../lib/calculator';
 import { useOrdersStore } from '../../store/ordersStore';
+import { useTableStore } from '../../store/tableStore';
+import { generateOrderPdf, downloadPdf, sendPdfToMax } from '../../lib/generateOrderPdf';
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   novy:     { label: 'Новый',        color: 'bg-blue-500' },
@@ -19,23 +22,42 @@ const MAT_LABEL: Record<string, string> = {
   pvc: 'ПВХ', screen: 'Сетка', oxford: 'Оксфорд',
 };
 
-interface ClientFields { fio: string; phone: string; address: string; email: string; }
-const EMPTY: ClientFields = { fio: '', phone: '', address: '', email: '' };
+interface ClientFields { fio: string; phone: string; address: string; email: string; comment: string; }
+const EMPTY: ClientFields = { fio: '', phone: '', address: '', email: '', comment: '' };
+const EMPTY_ROWS: never[] = [];
 
 export function ClientPanel() {
   const [prices, setPrices] = useState<CalcPrices>(DEFAULT_PRICES);
   const [client, setClient] = useState<ClientFields>(EMPTY);
   const [confirmed, setConfirmed] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const { orders, activeOrderId, updateStatus, saveCurrentOrder } = useOrdersStore();
+  const savedRows = useTableStore((s) => s.rows[activeOrderId ?? ''] ?? EMPTY_ROWS);
 
   // Reset fields when active order changes
   useEffect(() => { setClient(EMPTY); setConfirmed(false); }, [activeOrderId]);
 
   async function handleConfirm() {
-    if (!activeOrderId) return;
-    await saveCurrentOrder();
-    await updateStatus(activeOrderId, 'v_rabote');
-    setConfirmed(true);
+    if (!activeOrderId || !activeOrder) return;
+    setPdfLoading(true);
+    try {
+      // Generate and download PDF
+      const blob = await generateOrderPdf({
+        orderNum: activeOrder.orderNum,
+        client,
+        rows: savedRows,
+      });
+      downloadPdf(blob, activeOrder.orderNum);
+      sendPdfToMax(blob, activeOrder.orderNum).catch((e) => console.error('MAX send error:', e));
+      // Update order status
+      await saveCurrentOrder();
+      await updateStatus(activeOrderId, 'v_rabote');
+      setConfirmed(true);
+    } catch (e) {
+      console.error('PDF generation error:', e);
+    } finally {
+      setPdfLoading(false);
+    }
   }
 
   const activeOrder = orders.find((o) => o.id === activeOrderId) ?? null;
@@ -61,6 +83,17 @@ export function ClientPanel() {
   }, []);
 
   return (
+    <>
+    {pdfLoading && createPortal(
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl px-10 py-8 flex flex-col items-center gap-5 min-w-[260px]">
+          <div className="w-12 h-12 border-4 border-[#059669] border-t-transparent rounded-full animate-spin"/>
+          <p className="text-sm font-semibold text-[#0f172a] dark:text-slate-100">Генерация PDF...</p>
+          <p className="text-xs text-[#94a3b8] text-center">Формируем чертёж и раскрой.<br/>Обычно занимает 2–4 секунды.</p>
+        </div>
+      </div>,
+      document.body
+    )}
     <aside className="w-full bg-white dark:bg-slate-900 border-l border-[#e2e8f0] dark:border-slate-700 flex flex-col h-full overflow-hidden">
 
       {/* Header — показывает активный заказ или плейсхолдер */}
@@ -113,10 +146,11 @@ export function ClientPanel() {
         {/* Поля клиента */}
         <div className="px-4 py-3 flex flex-col gap-2">
           {([
-            ['fio',     'ФИО',     'text',  'Иванов Иван Иванович'],
-            ['phone',   'Телефон', 'tel',   '+7 (___) ___-__-__'],
-            ['address', 'Адрес',   'text',  'г. Москва, ул. ...'],
-            ['email',   'Email',   'email', 'client@mail.ru'],
+            ['fio',     'ФИО',        'text',  'Иванов Иван Иванович'],
+            ['phone',   'Телефон',    'tel',   '+7 (___) ___-__-__'],
+            ['address', 'Адрес',      'text',  'г. Москва, ул. ...'],
+            ['email',   'Email',      'email', 'client@mail.ru'],
+            ['comment', 'Комментарий','text',  'Пробой в цеху...'],
           ] as [keyof ClientFields, string, string, string][]).map(([key, label, type, placeholder]) => (
             <div key={key}>
               <label className="block text-[11px] font-medium text-[#64748b] dark:text-slate-400 mb-1">{label}</label>
@@ -181,24 +215,17 @@ export function ClientPanel() {
             </button>
           </div>
         ) : (
-          <>
-            <button
-              disabled={!activeOrder || !client.fio.trim()}
-              className="w-full py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold text-xs rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              Сохранить клиента
-            </button>
-            <button
-              disabled={!activeOrder}
-              onClick={handleConfirm}
-              className="w-full py-2 bg-[#059669] hover:bg-[#047857] text-white font-semibold text-xs rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              Оформить заказ
-            </button>
-          </>
+          <button
+            disabled={!activeOrder || pdfLoading}
+            onClick={handleConfirm}
+            className="w-full py-2 bg-[#059669] hover:bg-[#047857] text-white font-semibold text-xs rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            {pdfLoading ? 'Генерация PDF...' : 'Оформить заказ'}
+          </button>
         )}
       </div>
 
     </aside>
+    </>
   );
 }
