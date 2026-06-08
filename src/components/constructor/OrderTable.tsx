@@ -80,7 +80,7 @@ function fmtPrice(n: number): string {
 
 function cellView(key: keyof TableRow | 'idx', row: TableRow, idx: number): string {
   if (key === 'idx') return String(idx + 1);
-  const v = (row as Record<string, unknown>)[key as string];
+  const v = (row as unknown as Record<string, unknown>)[key as string];
   switch (key) {
     case 'prodType':       return ru(PROD_RU, v as string);
     case 'shape':          return ru(SHAPE_RU, v as string);
@@ -281,7 +281,7 @@ function EditCell({
   onChange: (field: keyof TableRow, val: unknown) => void;
 }) {
   const key = col.key as keyof TableRow;
-  const v = (row as Record<string, unknown>)[key as string];
+  const v = (row as unknown as Record<string, unknown>)[key as string];
 
   const cls = 'w-full text-[10px] px-1 py-0.5 rounded border border-[#e2e8f0] dark:border-slate-600 bg-white dark:bg-slate-800 text-[#0f172a] dark:text-slate-100 outline-none focus:border-[#2563eb]';
 
@@ -503,11 +503,6 @@ export function OrderTable() {
   }
 
   // ── edit mode ────────────────────────────────────────────────────────────────
-  function enterEdit() {
-    setEditRows([...savedRows]);
-    setEditMode(true);
-  }
-
   function updateEditRow(rowId: string, field: keyof TableRow, val: unknown) {
     setEditRows((prev) => {
       const next = prev.map((r) => {
@@ -569,13 +564,6 @@ export function OrderTable() {
     setActiveRowId(row.id);
   }
 
-  function deleteRow(rowId: string) {
-    if (editMode) {
-      setEditRows((prev) => prev.filter((r) => r.id !== rowId));
-    } else if (activeOrderId) {
-      removeRow(activeOrderId, rowId);
-    }
-  }
 
   // ── selection mode ───────────────────────────────────────────────────────────
   function toggleSelect(id: string) {
@@ -661,8 +649,9 @@ export function OrderTable() {
     if (!el) return;
     const startX = e.clientX;
     const startLeft = el.scrollLeft;
+    const elDiv = el;
     function onMove(ev: MouseEvent) {
-      el.scrollLeft = startLeft - (ev.clientX - startX) * 2.2;
+      elDiv.scrollLeft = startLeft - (ev.clientX - startX) * 2.2;
     }
     function onUp() {
       document.removeEventListener('mousemove', onMove);

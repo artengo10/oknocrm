@@ -12,7 +12,6 @@ const COLOR_RU: Record<string, string> = {
   brown: 'Коричневый', white: 'Белый', gray: 'Серый',
   beige: 'Бежевый', black: 'Чёрный', blue: 'Синий',
 };
-const GLASS_RU: Record<string, string> = { clear: 'Прозрачное', tinted: 'Тонированное' };
 const LOCK_RU: Record<string, string> = { rotary: 'Замок-скоба', french: 'Французкий замок' };
 const ZIP_RU: Record<string, string> = { spiral: 'Молния спиральная', tractor: 'Молния тракторная' };
 

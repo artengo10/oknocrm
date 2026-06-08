@@ -48,265 +48,6 @@ function trianglePaths(ox: number, oy: number, w: number, h: number, okL: number
   return { outer, inner, ix: blX, iy: topY, iw, ih };
 }
 
-// ─── luver position helper ────────────────────────────────────────────────────
-// Returns evenly-spaced positions (in px) along an axis, offset one spacingPx
-// from each inner band edge. Guarantees at least one position.
-function getLuverPositions(axisStart: number, axisEnd: number, bandPx: number, spacingPx: number): number[] {
-  const innerStart = axisStart + bandPx;
-  const innerEnd   = axisEnd   - bandPx;
-  if (innerEnd - innerStart <= 0 || spacingPx <= 0) return [(axisStart + axisEnd) / 2];
-  const positions: number[] = [];
-  let pos = innerStart + spacingPx;
-  while (pos <= innerEnd - spacingPx * 0.5) {
-    positions.push(pos);
-    pos += spacingPx;
-  }
-  if (positions.length === 0) positions.push((innerStart + innerEnd) / 2);
-  return positions;
-}
-
-// ─── fittings ─────────────────────────────────────────────────────────────────
-
-function Fittings({ openingType, prodType, shape, ox, oy, w, h, ix, iy, iw, ih, luverSpacing, pxPerCm }: {
-  openingType: string; prodType: 'window'|'door'; shape: string;
-  ox:number; oy:number; w:number; h:number; ix:number; iy:number; iw:number; ih:number;
-  luverSpacing: number;   // мм между люверсами
-  pxPerCm: number;        // пиксель на см (scale)
-}) {
-  const bandPx  = Math.max(1, (w - iw) / 2);           // фактическая ширина рамки, px
-  const band    = Math.min(bandPx, 20);                 // ограничена для размера иконок
-  const r       = Math.max(4, band * 0.32);
-  const spacingPx = Math.max(20, (luverSpacing / 10) * pxPerCm); // мм→см→px
-  const sz      = r * 2;
-  const el: React.ReactNode[] = [];
-
-  // Люверс горизонтальный (без поворота)
-  function luversH(key: string, cx: number, cy: number) {
-    return <image key={key} href={luversSrc} x={cx-sz/2} y={cy-sz/2} width={sz} height={sz}/>;
-  }
-  // Люверс вертикальный (повёрнут 90°)
-  function luversV(key: string, cx: number, cy: number) {
-    return <image key={key} href={luversSrc} x={cx-sz/2} y={cy-sz/2} width={sz} height={sz}
-      transform={`rotate(90,${cx},${cy})`}/>;
-  }
-  // Французский замок горизонтальный
-  function franH(key: string, cx: number, cy: number) {
-    const bw = r*1.4, bh = r*2.4;
-    return <image key={key} href={franSrc} x={cx-bw/2} y={cy-bh/2} width={bw} height={bh}/>;
-  }
-  // Французский замок вертикальный (повёрнут 90°)
-  function franV(key: string, cx: number, cy: number) {
-    const bw = r*1.4, bh = r*2.4;
-    return <image key={key} href={franSrc} x={cx-bw/2} y={cy-bh/2} width={bw} height={bh}
-      transform={`rotate(90,${cx},${cy})`}/>;
-  }
-
-  // n точек равномерно вдоль отрезка
-  function linePoints(x1:number,y1:number, x2:number,y2:number, n:number) {
-    return Array.from({length:n}, (_,i) => ({
-      x: x1 + (i+0.5)/n*(x2-x1),
-      y: y1 + (i+0.5)/n*(y2-y1),
-    }));
-  }
-
-  // ── DOOR ─────────────────────────────────────────────────────────────────────
-  if (prodType === 'door') {
-    getLuverPositions(ox, ox+w, bandPx, spacingPx).forEach((x, i) => {
-      el.push(luversH(`dt${i}`, x, oy+band/2));
-      el.push(luversH(`db${i}`, x, oy+h-band/2));
-    });
-    getLuverPositions(oy, oy+h, bandPx, spacingPx).forEach((y, i) => {
-      el.push(luversV(`dl${i}`, ox+band/2, y));
-      el.push(luversV(`dr${i}`, ox+w-band/2, y));
-    });
-    const zipW = openingType.includes('трактор') ? 10 : 7;
-    const step = openingType.includes('трактор') ? 10 : 9;
-    const isTwo = openingType.startsWith('2 молнии');
-    const zxArr = isTwo ? [ix+iw*0.15, ix+iw*0.85] : [ix+iw/2];
-    zxArr.forEach((zx,zi) => {
-      el.push(<rect key={`zb${zi}`} x={zx-zipW/2} y={iy} width={zipW} height={ih} fill="#e8e8e8" stroke="#444" strokeWidth="1.2" rx="1"/>);
-      for (let z=0; z<Math.floor(ih/step); z++) {
-        el.push(<rect key={`zt${zi}-${z}`} x={zx-2} y={iy+4+z*step} width={4} height={2.2} fill="#555" rx="0.7"/>);
-      }
-    });
-    return <>{el}</>;
-  }
-
-  // ── TRIANGLE ─────────────────────────────────────────────────────────────────
-  if (shape === 'triangle') {
-    const tip_o = { x: ox+w/2, y: oy };
-    const bl_o  = { x: ox,     y: oy+h };
-    const br_o  = { x: ox+w,   y: oy+h };
-    const blX = ix, topY = iy, brX = ix+iw, botY = iy+ih;
-    const tip_i = { x: ox+w/2, y: topY };
-    const bl_i  = { x: blX,    y: botY };
-    const br_i  = { x: brX,    y: botY };
-    const mid = (a:{x:number,y:number}, b:{x:number,y:number}) => ({ x:(a.x+b.x)/2, y:(a.y+b.y)/2 });
-    const m_tip = mid(tip_o, tip_i);
-    const m_bl  = mid(bl_o,  bl_i);
-    const m_br  = mid(br_o,  br_i);
-
-    // Нижняя сторона: шаг по X
-    const botLen  = Math.hypot(m_br.x-m_bl.x, m_br.y-m_bl.y);
-    const nBot    = Math.max(2, Math.round(botLen / spacingPx));
-    linePoints(m_bl.x,m_bl.y, m_br.x,m_br.y, nBot).forEach((p,i) => el.push(luversH(`tb${i}`,p.x,p.y)));
-    // Диагонали: шаг вдоль длины
-    const leftLen  = Math.hypot(m_bl.x-m_tip.x, m_bl.y-m_tip.y);
-    const rightLen = Math.hypot(m_br.x-m_tip.x, m_br.y-m_tip.y);
-    const nLeft  = Math.max(1, Math.round(leftLen  / spacingPx));
-    const nRight = Math.max(1, Math.round(rightLen / spacingPx));
-    linePoints(m_tip.x,m_tip.y, m_bl.x,m_bl.y, nLeft) .forEach((p,i) => el.push(luversH(`tl${i}`,p.x,p.y)));
-    linePoints(m_tip.x,m_tip.y, m_br.x,m_br.y, nRight).forEach((p,i) => el.push(luversH(`tr${i}`,p.x,p.y)));
-    return <>{el}</>;
-  }
-
-  // ── ARCH ─────────────────────────────────────────────────────────────────────
-  if (shape === 'arch') {
-    const arcCx  = ox + w / 2;
-    const arcCy  = iy;
-    const ry_out = iy - oy;
-    const rx_out = w / 2;
-    const rx_in  = iw / 2;
-    const ry_in  = Math.max(0, ry_out - (ix - ox));
-
-    // Арка: кол-во люверсов из длины дуги / шаг
-    const arcLen  = Math.PI * Math.sqrt((rx_out**2 + ry_out**2) / 2);  // приближение периметра полуэллипса
-    const nArc    = Math.max(2, Math.round(arcLen / spacingPx));
-    for (let i = 0; i < nArc; i++) {
-      const angle  = Math.PI * (1 - (i + 0.5) / nArc);
-      const ox_pt  = arcCx + rx_out * Math.cos(angle);
-      const oy_pt  = arcCy - ry_out * Math.sin(angle);
-      const ix_pt  = arcCx + rx_in  * Math.cos(angle);
-      const iy_pt  = arcCy - ry_in  * Math.sin(angle);
-      el.push(luversH(`aa${i}`, (ox_pt + ix_pt) / 2, (oy_pt + iy_pt) / 2));
-    }
-
-    // Боковые стороны — вертикальные люверсы
-    const midLX = (ox + ix)          / 2;
-    const midRX = (ox + w + ix + iw) / 2;
-    getLuverPositions(arcCy, oy + h, bandPx, spacingPx).forEach((y, i) => {
-      el.push(luversV(`asl${i}`, midLX, y));
-      el.push(luversV(`asr${i}`, midRX, y));
-    });
-
-    // Нижняя сторона — горизонтальные
-    getLuverPositions(ox, ox + w, bandPx, spacingPx).forEach((x, i) =>
-      el.push(luversH(`ab${i}`, x, (oy + h + iy + ih) / 2)));
-
-    return <>{el}</>;
-  }
-
-  // ── RECT / SQUARE (window) ───────────────────────────────────────────────────
-  const isGluh    = openingType === 'Глухое (без открывания)';
-  const isFrance  = openingType.includes('замок');
-  const isSkoba   = openingType.includes('скоб');
-  const hasZipper = openingType.includes('молни');
-
-  const topY   = oy + band / 2;
-  const botY   = oy + h - band / 2;
-  const leftX  = ox + band / 2;
-  const rightX = ox + w - band / 2;
-
-  // Верхние люверсы — всегда горизонтальные
-  getLuverPositions(ox, ox + w, bandPx, spacingPx).forEach((x, i) =>
-    el.push(luversH(`ht${i}`, x, topY)));
-
-  if (isGluh) {
-    getLuverPositions(ox, ox + w, bandPx, spacingPx).forEach((x, i) =>
-      el.push(luversH(`hb${i}`, x, botY)));
-    getLuverPositions(oy, oy + h, bandPx, spacingPx).forEach((y, i) => {
-      el.push(luversV(`hl${i}`, leftX, y));
-      el.push(luversV(`hr${i}`, rightX, y));
-    });
-  } else if (isSkoba) {
-    getLuverPositions(oy, oy + h, bandPx, spacingPx).forEach((y, i) => {
-      el.push(luversV(`sl${i}`, leftX, y));
-      el.push(luversV(`sr${i}`, rightX, y));
-    });
-    getLuverPositions(ox, ox + w, bandPx, spacingPx).forEach((x, i) =>
-      el.push(luversH(`sb${i}`, x, botY)));
-  } else if (isFrance) {
-    // Боковые — français вертикальный (повёрнут)
-    getLuverPositions(oy, oy + h, bandPx, spacingPx).forEach((y, i) => {
-      el.push(franV(`fl${i}`, leftX, y));
-      el.push(franV(`fr${i}`, rightX, y));
-    });
-    // Нижние — français горизонтальный
-    getLuverPositions(ox, ox + w, bandPx, spacingPx).forEach((x, i) =>
-      el.push(franH(`fb${i}`, x, botY)));
-  }
-
-  if (hasZipper) {
-    const isTwo2 = openingType.startsWith('2 молнии');
-    const bandW  = ix - ox;
-    const zipW   = Math.max(8, bandW * 2);
-    const zipH   = isFrance ? ih * 0.7 : ih;
-    const zxArr2 = isTwo2 ? [ix+iw*0.33, ix+iw*0.67] : [ix+iw/2];
-    zxArr2.forEach((zx, zi) => {
-      el.push(<rect key={`wzb${zi}`} x={zx - zipW/2} y={iy} width={zipW} height={zipH} fill="#111" />);
-    });
-  }
-  return <>{el}</>;
-}
-
-// ─── dimension rulers for luver positions ─────────────────────────────────────
-
-function LuverRulers({ ox, oy, w, h, bandPx, spacingPx, pxPerCm, shape }: {
-  ox:number; oy:number; w:number; h:number;
-  bandPx:number; spacingPx:number; pxPerCm:number; shape:string;
-}) {
-  if (pxPerCm <= 0 || spacingPx <= 0) return null;
-  const lc = '#64748b';
-  const tc = '#1e293b';
-  const fs = 9;
-  const tk = 5;
-
-  const showRect = shape === 'rect' || shape === 'square';
-
-  // Горизонтальная линейка — над фигурой
-  const hPos = (shape !== 'triangle') ? getLuverPositions(ox, ox+w, bandPx, spacingPx) : [];
-  const hXs  = [ox, ...hPos, ox+w];
-  const hY   = oy - 16;
-
-  // Вертикальная линейка — левее фигуры (только rect/square)
-  const vPos = showRect ? getLuverPositions(oy, oy+h, bandPx, spacingPx) : [];
-  const vYs  = [oy, ...vPos, oy+h];
-  const vX   = ox - 20;
-
-  return <>
-    {/* Горизонтальная линейка */}
-    {hPos.length > 0 && <>
-      <line x1={ox} y1={hY} x2={ox+w} y2={hY} stroke={lc} strokeWidth="0.8"/>
-      {hXs.map((x, i) => (
-        <g key={`hr${i}`}>
-          <line x1={x} y1={hY-tk} x2={x} y2={hY+tk} stroke={lc} strokeWidth="0.8"/>
-          {i < hXs.length-1 && (
-            <text x={(x+hXs[i+1])/2} y={hY-8} fontSize={fs} fill={tc} textAnchor="middle"
-              fontFamily="system-ui,sans-serif" dominantBaseline="auto">
-              {((hXs[i+1]-x)/pxPerCm).toFixed(1)}
-            </text>
-          )}
-        </g>
-      ))}
-    </>}
-
-    {/* Вертикальная линейка */}
-    {showRect && vPos.length > 0 && <>
-      <line x1={vX} y1={oy} x2={vX} y2={oy+h} stroke={lc} strokeWidth="0.8"/>
-      {vYs.map((y, i) => (
-        <g key={`vr${i}`}>
-          <line x1={vX-tk} y1={y} x2={vX+tk} y2={y} stroke={lc} strokeWidth="0.8"/>
-          {i < vYs.length-1 && (
-            <text x={vX-8} y={(y+vYs[i+1])/2} fontSize={fs} fill={tc} textAnchor="end"
-              fontFamily="system-ui,sans-serif" dominantBaseline="middle">
-              {((vYs[i+1]-y)/pxPerCm).toFixed(1)}
-            </text>
-          )}
-        </g>
-      ))}
-    </>}
-  </>;
-}
 
 // ─── interactive fittings layer (rect / square) ───────────────────────────────
 
@@ -315,7 +56,7 @@ function FittingsInteractive({
   containerRef, vt, selectedId, onSelect, onStripClick, moveFitting,
   localPos, setLocalPos,
   shape, ix, iy, iw, ih,
-  prodType, openingType,
+  openingType,
   remenLengthPx, remenWidthPx,
   frameFill, innerPath,
 }: {
@@ -332,7 +73,6 @@ function FittingsInteractive({
   setLocalPos: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   shape: string;
   ix: number; iy: number; iw: number; ih: number;
-  prodType: string;
   openingType: string;
   remenLengthPx: number;
   remenWidthPx: number;
@@ -772,12 +512,12 @@ export function WindowVisualizer() {
   }
 
   const {
-    width, height, color, glass, shape, prodType, openingType, material,
+    width, height, color, glass, shape, openingType, material,
     okantovkaTop, okantovkaBottom, okantovkaLeft, okantovkaRight, luverSpacing,
     luverSpacingTop, luverSpacingBottom, luverSpacingLeft, luverSpacingRight,
     remenLength, remenWidth,
     fittings, fittingsHistory, fittingsRedoStack, fittingsCustomized,
-    generateFittings, addFitting, undoFitting, redoFitting, resetFittings, moveFitting, removeFitting,
+    generateFittings, addFitting, undoFitting, redoFitting, moveFitting, removeFitting,
   } = useConstructorStore();
   const isDark = useThemeStore((s) => s.theme === 'dark');
 
@@ -992,7 +732,7 @@ export function WindowVisualizer() {
             localPos={localPos}
             setLocalPos={setLocalPos}
             shape={shape} ix={ix} iy={iy} iw={iw} ih={ih}
-            prodType={prodType} openingType={openingType}
+            openingType={openingType}
             remenLengthPx={remenLength > 0 ? remenLength * scale : 0}
             remenWidthPx={remenWidth > 0 ? remenWidth * scale : 0}
             frameFill={frameFill}

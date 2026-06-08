@@ -1,4 +1,4 @@
-import type { FittingItem, FittingSide } from '../store/constructorStore';
+import type { FittingItem, FittingSide, FittingType } from '../store/constructorStore';
 import { getFrameHex, getGlassHex } from './calculator';
 
 // ─── color helpers ────────────────────────────────────────────────────────────

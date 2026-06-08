@@ -21,8 +21,6 @@ function ShapePreview({ shape, prodType, active }: { shape: ShapeType; prodType:
 
   const ow = W - pad * 2, oh = H - pad * 2;
   const ox = pad, oy = pad;
-  const ix = ox + band, iy = oy + band;
-  const iw = ow - band * 2, ih = oh - band * 2;
 
   let outerPath = '', innerPath = '';
 
@@ -161,7 +159,7 @@ function Step1({ store, setField, setProdType }: any) {
       <div>
         <SectionTitle>Выберите форму</SectionTitle>
         <div className="grid grid-cols-2 gap-2.5">
-          {SHAPE_OPTIONS[store.prodType].map((sh) => {
+          {SHAPE_OPTIONS[store.prodType as ProdType].map((sh: ShapeType) => {
             const active = store.shape === sh;
             return (
               <button key={sh} type="button" onClick={() => setField('shape', sh as ShapeType)}
@@ -469,59 +467,6 @@ function Step4({ store, setField }: any) {
         <Toggle checked={store.install} onChange={(v) => setField('install', v)} label="Монтаж" />
         {isWindow && (
           <Toggle checked={hasZipper} onChange={toggleWindowZipper} label="Добавить молнию" />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function Step5({ store, setField }: any) {
-  return (
-    <div className="flex flex-col gap-5 px-4 py-4">
-      <div>
-        <SectionTitle>Дополнительный замок</SectionTitle>
-        <div className="flex flex-col gap-1.5 mb-3">
-          {([['none','Без замка'],['rotary','Поворотная скоба'],['french','Французский замок']] as [ExtraLockType, string][]).map(([val, label]) => (
-            <button key={val} type="button" onClick={() => setField('extraLockType', val)}
-              className={`text-left px-3 py-2 rounded-xl border-2 text-sm transition-all ${
-                store.extraLockType === val
-                  ? 'border-[#2563eb] bg-[#eff6ff] dark:bg-blue-900/20 text-[#2563eb] font-medium'
-                  : 'border-[#e2e8f0] dark:border-slate-600 bg-white dark:bg-slate-800 text-[#475569] dark:text-slate-300 hover:border-[#94a3b8]'
-              }`}>
-              {label}
-            </button>
-          ))}
-        </div>
-        {store.extraLockType !== 'none' && (
-          <div>
-            <p className="text-xs text-[#64748b] dark:text-slate-400 mb-1">Количество</p>
-            <input type="number" value={store.extraLockCount} min={1} max={20}
-              onChange={(e) => setField('extraLockCount', Math.max(1, parseInt(e.target.value) || 1))}
-              className={inputCls} />
-          </div>
-        )}
-      </div>
-      <div>
-        <SectionTitle>Дополнительная молния</SectionTitle>
-        <div className="flex flex-col gap-1.5 mb-3">
-          {([['none','Без молнии'],['spiral','Спиральная'],['tractor','Тракторная']] as [ExtraZipperType, string][]).map(([val, label]) => (
-            <button key={val} type="button" onClick={() => setField('extraZipperType', val)}
-              className={`text-left px-3 py-2 rounded-xl border-2 text-sm transition-all ${
-                store.extraZipperType === val
-                  ? 'border-[#2563eb] bg-[#eff6ff] dark:bg-blue-900/20 text-[#2563eb] font-medium'
-                  : 'border-[#e2e8f0] dark:border-slate-600 bg-white dark:bg-slate-800 text-[#475569] dark:text-slate-300 hover:border-[#94a3b8]'
-              }`}>
-              {label}
-            </button>
-          ))}
-        </div>
-        {store.extraZipperType !== 'none' && (
-          <div>
-            <p className="text-xs text-[#64748b] dark:text-slate-400 mb-1">Длина (см)</p>
-            <input type="number" value={store.extraZipperLen} min={1} max={2000}
-              onChange={(e) => setField('extraZipperLen', Math.max(1, parseInt(e.target.value) || 1))}
-              className={inputCls} />
-          </div>
         )}
       </div>
     </div>

@@ -5,7 +5,7 @@ import { useOrdersStore } from '../store/ordersStore';
 export function AutoSave() {
   const activeOrderId = useOrdersStore((s) => s.activeOrderId);
   const saveCurrentOrder = useOrdersStore((s) => s.saveCurrentOrder);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Single string key from all saveable constructor fields
   const key = useConstructorStore((s) =>
@@ -22,9 +22,9 @@ export function AutoSave() {
 
   useEffect(() => {
     if (!activeOrderId) return;
-    clearTimeout(timerRef.current);
+    clearTimeout(timerRef.current ?? undefined);
     timerRef.current = setTimeout(saveCurrentOrder, 800);
-    return () => clearTimeout(timerRef.current);
+    return () => clearTimeout(timerRef.current ?? undefined);
   }, [key, activeOrderId]);
 
   return null;
