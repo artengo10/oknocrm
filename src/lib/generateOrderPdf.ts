@@ -5,6 +5,7 @@ import { buildWindowSvg } from './windowSvg';
 import remenUrl from '../assets/remen.png';
 import franUrl from '../assets/fran.png';
 import luversUrl from '../assets/luvers.svg';
+import apiClient from '../api/client';
 
 // ─── translation maps ─────────────────────────────────────────────────────────
 const MAT_RU: Record<string, string> = { pvc: 'ПВХ 750 мкм', screen: 'Сетка', oxford: 'Оксфорд', fabric: 'Ткань' };
@@ -86,6 +87,38 @@ function iconImg(src: string, w = 70, h = 70) {
   return `<img src="${src}" width="${w}" height="${h}" style="display:inline-block;vertical-align:middle;object-fit:contain;"/>`;
 }
 
+// SVG diagram for strap showing length and width dimension lines
+function remenDiagramSvg(src: string, lengthCm: number, widthCm: number): string {
+  const imgW = 110, imgH = 30;
+  const marginT = 20, marginR = 30;
+  const W = imgW + marginR, H = imgH + marginT;
+  const lenTxt = `${lengthCm} см`;
+  const widTxt = `${widthCm} см`;
+  const lc = '#6b7280', tc = '#111827', fs = 8;
+  const lenBgW = lenTxt.length * 5.5 + 8;
+  const widBgH = widTxt.length * 5.5 + 8;
+  return `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;">
+  <g transform="translate(0,${marginT})">
+    <image href="${src}" x="0" y="0" width="${imgW}" height="${imgH}" preserveAspectRatio="none"/>
+    <!-- Длина: горизонтальная размерная линия сверху -->
+    <line x1="0" y1="-7" x2="${imgW}" y2="-7" stroke="${lc}" stroke-width="0.9"/>
+    <line x1="0" y1="-11" x2="0" y2="-3" stroke="${lc}" stroke-width="0.9"/>
+    <line x1="${imgW}" y1="-11" x2="${imgW}" y2="-3" stroke="${lc}" stroke-width="0.9"/>
+    <rect x="${imgW/2 - lenBgW/2}" y="-17" width="${lenBgW}" height="12" fill="white" opacity="0.92" rx="2"/>
+    <text x="${imgW/2}" y="-8" font-size="${fs}" fill="${tc}" text-anchor="middle"
+      font-weight="700" font-family="Arial,sans-serif">Д: ${lenTxt}</text>
+    <!-- Ширина: вертикальная размерная линия справа -->
+    <line x1="${imgW+8}" y1="0" x2="${imgW+8}" y2="${imgH}" stroke="${lc}" stroke-width="0.9"/>
+    <line x1="${imgW+4}" y1="0" x2="${imgW+12}" y2="0" stroke="${lc}" stroke-width="0.9"/>
+    <line x1="${imgW+4}" y1="${imgH}" x2="${imgW+12}" y2="${imgH}" stroke="${lc}" stroke-width="0.9"/>
+    <rect x="${imgW+12}" y="${imgH/2 - widBgH/2}" width="12" height="${widBgH}" fill="white" opacity="0.92" rx="2"/>
+    <text x="${imgW+18}" y="${imgH/2}" font-size="${fs}" fill="${tc}" text-anchor="middle"
+      font-weight="700" font-family="Arial,sans-serif"
+      transform="rotate(90,${imgW+18},${imgH/2})">Ш: ${widTxt}</text>
+  </g>
+</svg>`;
+}
+
 // ─── real fitting counts from saved fittings ─────────────────────────────────
 function getRealCounts(row: TableRow) {
   const fittings = row.fittings ?? [];
@@ -129,10 +162,27 @@ function windowSvgFor(row: TableRow, assets: Assets, maxW: number, maxH: number)
   });
 }
 
+// Compute effective strap dimensions (cm) — scale-independent, matches windowSvg.ts and ParamsPanel
+function resolveRemenDims(row: TableRow): { lengthCm: number; widthCm: number } {
+  const { h: hCm } = parseSize(row.size);
+  const okT = (row.okantovkaTop    ?? 70) / 10;
+  const okB = (row.okantovkaBottom ?? 70) / 10;
+  const ih_cm = Math.max(0, hCm - okT - okB);
+  const remenLength = row.remenLength ?? 0;
+  const remenWidth  = row.remenWidth  ?? 0;
+  const L_cm = remenLength > 0 ? remenLength : Math.min(ih_cm * 0.48, 50);
+  const W_cm = remenWidth  > 0 ? remenWidth  : L_cm / 7;
+  return {
+    lengthCm: Math.round(L_cm * 10) / 10,
+    widthCm:  Math.round(W_cm * 10) / 10,
+  };
+}
+
 // ─── hardware block for a single window ──────────────────────────────────────
-function hwBlock(row: TableRow, assets: Assets): string {
+function hwBlock(row: TableRow, assets: Assets, svgMaxW = 520, svgMaxH = 620): string {
   const { nLuvers, nFran, nRemen } = getRealCounts(row);
   const showFran = nFran > 0 || row.extraLockType === 'french';
+  const { lengthCm, widthCm } = resolveRemenDims(row);
 
   return `
     ${showFran ? `<div class="hw-row">
@@ -147,9 +197,9 @@ function hwBlock(row: TableRow, assets: Assets): string {
       <div class="hw-icon">${iconImg(assets.luvers, 52, 52)}</div>
       <div class="hw-info"><div class="hw-name">Люверс</div><div class="hw-count">×${nLuvers}</div></div>
     </div>` : ''}
-    ${nRemen > 0 ? `<div class="hw-row">
-      <div class="hw-icon">${iconImg(assets.remen, 100, 42)}</div>
-      <div class="hw-info"><div class="hw-name">Подвязочный ремень</div><div class="hw-count">×${nRemen}</div></div>
+    ${nRemen > 0 ? `<div class="hw-row" style="align-items:flex-start;">
+      <div class="hw-icon" style="padding-top:4px;">${remenDiagramSvg(assets.remen, lengthCm, widthCm)}</div>
+      <div class="hw-info" style="padding-top:18px;"><div class="hw-name">Подвязочный ремень</div><div class="hw-count">×${nRemen}</div></div>
     </div>` : ''}
     ${row.extraZipperType !== 'none' ? `<div class="hw-row">
       <div class="hw-info"><div class="hw-name">${ru(ZIP_RU, row.extraZipperType)}</div><div class="hw-count">${row.extraZipperLen} пог.м</div></div>
@@ -263,7 +313,7 @@ function windowVisualHtml(row: TableRow, idx: number, total: number, orderNum: n
         <div class="mat-name">${ru(MAT_RU, row.mat)}:</div>
         <div class="mat-color">${ru(COLOR_RU, row.color)}</div>
         <div class="cutting-wrap">${drawCuttingRect(w, h, 160, row)}</div>
-        ${hwBlock(row, assets)}
+        ${hwBlock(row, assets, maxW, maxH)}
       </div>
     </div>
   </div>`;
@@ -298,7 +348,7 @@ function buildCombinedPage(data: OrderPdfData, assets: Assets): string {
         <div class="mat-name">${ru(MAT_RU, row.mat)}:</div>
         <div class="mat-color">${ru(COLOR_RU, row.color)}</div>
         <div class="cutting-wrap">${drawCuttingRect(w, h, 160, row)}</div>
-        ${hwBlock(row, assets)}
+        ${hwBlock(row, assets, 520, 620)}
       </div>
     </div>
   </div>`;
@@ -462,9 +512,7 @@ export function downloadPdf(blob: Blob, orderNum: number) {
 }
 
 export async function sendPdfToMax(blob: Blob, orderNum: number): Promise<void> {
-  await fetch(`/api/bot/send-pdf?orderNum=${orderNum}`, {
-    method: 'POST',
+  await apiClient.post(`/api/bot/send-pdf?orderNum=${orderNum}`, blob, {
     headers: { 'Content-Type': 'application/pdf' },
-    body: blob,
   });
 }

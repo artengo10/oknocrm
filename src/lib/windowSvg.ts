@@ -73,26 +73,32 @@ function fittingPx(
     const ryOut = iy - voy;
     const rxOut = visW / 2;
     const arcCx = vox + visW / 2;
+    const lBand = ix - vox;
+    const rBand = (vox + visW) - (ix + iw);
+    const bBand = (voy + visH) - (iy + ih);
     if (side === 'top') {
       const x = vox + posNorm * visW;
       const cosA = Math.max(-1, Math.min(1, (x - arcCx) / rxOut));
       const yOut = arcCy - ryOut * Math.sin(Math.acos(cosA));
-      return { cx: x, cy: yOut + autoBandPx / 2 };
+      return { cx: x, cy: yOut + lBand / 2 };
     }
     if (side === 'left') {
       const cy = voy + posNorm * visH;
-      return cy < arcCy ? null : { cx: vox + autoBandPx / 2, cy };
+      return cy < arcCy ? null : { cx: vox + lBand / 2, cy };
     }
     if (side === 'right') {
       const cy = voy + posNorm * visH;
-      return cy < arcCy ? null : { cx: vox + visW - autoBandPx / 2, cy };
+      return cy < arcCy ? null : { cx: ix + iw + rBand / 2, cy };
     }
-    return { cx: vox + posNorm * visW, cy: voy + visH - autoBandPx / 2 };
+    return { cx: vox + posNorm * visW, cy: iy + ih + bBand / 2 };
   }
 
   if (shape === 'triangle') {
     if (side === 'top') return null;
-    if (side === 'bottom') return { cx: vox + posNorm * visW, cy: voy + visH - autoBandPx / 2 };
+    if (side === 'bottom') {
+      const bBand = (voy + visH) - (iy + ih);
+      return { cx: vox + posNorm * visW, cy: iy + ih + bBand / 2 };
+    }
     const tipO = { x: vox + visW / 2, y: voy };
     const tipI = { x: vox + visW / 2, y: iy };
     const endO = side === 'left' ? { x: vox, y: voy + visH } : { x: vox + visW, y: voy + visH };
@@ -125,10 +131,10 @@ function buildFittingRulers(
   const lc = '#64748b', tc = '#1e293b', fs = 9, tk = 5;
   let svg = '';
 
-  const topF    = fittings.filter(f => f.side === 'top'   ).sort((a, b) => a.posNorm - b.posNorm);
-  const bottomF = fittings.filter(f => f.side === 'bottom').sort((a, b) => a.posNorm - b.posNorm);
-  const leftF   = fittings.filter(f => f.side === 'left'  ).sort((a, b) => a.posNorm - b.posNorm);
-  const rightF  = fittings.filter(f => f.side === 'right' ).sort((a, b) => a.posNorm - b.posNorm);
+  const topF    = fittings.filter(f => f.side === 'top'    && f.type !== 'zipper').sort((a, b) => a.posNorm - b.posNorm);
+  const bottomF = fittings.filter(f => f.side === 'bottom' && f.type !== 'zipper').sort((a, b) => a.posNorm - b.posNorm);
+  const leftF   = fittings.filter(f => f.side === 'left'   && f.type !== 'zipper').sort((a, b) => a.posNorm - b.posNorm);
+  const rightF  = fittings.filter(f => f.side === 'right'  && f.type !== 'zipper').sort((a, b) => a.posNorm - b.posNorm);
 
   const topXs    = [vox, ...topF.map(f    => vox + f.posNorm * visW), vox + visW];
   const bottomXs = [vox, ...bottomF.map(f => vox + f.posNorm * visW), vox + visW];
@@ -174,6 +180,51 @@ function buildFittingRulers(
   if (leftF.length   > 0) svg += vRuler(leftRX,   leftYs,   false);
   if (rightF.length  > 0) svg += vRuler(rightRX,  rightYs,  true);
 
+  return svg;
+}
+
+// ─── zipper internal ruler (distances between zippers and inner window edges) ─
+
+function buildZipperRulers(
+  fittings: FittingItem[],
+  ix: number, iy: number, iw: number, ih: number,
+  scale: number,
+  vox: number,
+): string {
+  const zippers = fittings
+    .filter(f => f.type === 'zipper')
+    .sort((a, b) => a.posNorm - b.posNorm);
+  if (zippers.length === 0 || ih < 24) return '';
+
+  const rulerY = iy + 9;
+  const tk = 5, fs = 9;
+  const lc = '#64748b', tc = '#0f172a';
+  const bandW = Math.max(4, (10 * scale - 5) / 2);
+  const halfZip = bandW + 2.5;
+
+  const ticks: number[] = [ix];
+  for (const z of zippers) {
+    const zx = ix + z.posNorm * iw;
+    ticks.push(Math.max(ix, zx - halfZip));
+    ticks.push(Math.min(ix + iw, zx + halfZip));
+  }
+  ticks.push(ix + iw);
+
+  let svg = `<line x1="${ix}" y1="${rulerY}" x2="${ix + iw}" y2="${rulerY}" stroke="${lc}" stroke-width="0.8"/>`;
+  ticks.forEach((x, i) => {
+    svg += `<line x1="${x.toFixed(2)}" y1="${rulerY - tk}" x2="${x.toFixed(2)}" y2="${rulerY + tk}" stroke="${lc}" stroke-width="0.8"/>`;
+    if (i < ticks.length - 1) {
+      const next = ticks[i + 1];
+      const d = (next - x) / scale;
+      if (d >= 0.3) {
+        const mid = (x + next) / 2;
+        const txt = d.toFixed(1);
+        const tw = txt.length * 4.8 + 5;
+        svg += `<rect x="${(mid - tw / 2).toFixed(2)}" y="${rulerY + 2}" width="${tw.toFixed(1)}" height="11" fill="white" opacity="0.88" rx="2"/>`;
+        svg += `<text x="${mid.toFixed(2)}" y="${rulerY + 11}" font-size="${fs}" font-weight="600" fill="${tc}" text-anchor="middle" font-family="Arial,sans-serif">${txt}</text>`;
+      }
+    }
+  });
   return svg;
 }
 
@@ -253,6 +304,14 @@ export function buildDefaultFittings(
   if (shape === 'rect' || shape === 'square') {
     items.push({ id: 'remen-0', side: 'top', posNorm: 0.33, type: 'remen' });
     items.push({ id: 'remen-1', side: 'top', posNorm: 0.67, type: 'remen' });
+  }
+
+  if (openingType.includes('молни')) {
+    const m = openingType.match(/^(\d+) молни/);
+    const count = m ? Math.max(1, Math.min(5, parseInt(m[1]))) : 1;
+    for (let i = 0; i < count; i++) {
+      items.push({ id: `zipper-${i}`, side: 'top', posNorm: (i + 1) / (count + 1), type: 'zipper' });
+    }
   }
 
   return items;
@@ -336,20 +395,43 @@ export function buildWindowSvg({
 
   // Fitting icon size (same formula as FittingsInteractive in WindowVisualizer)
   const realBand = (shape === 'rect' || shape === 'square') ? (iy - voy) : autoBandPx;
-  const r = Math.max(4, Math.min(realBand * 0.27, 15));
+  const r = Math.max(4, Math.min(realBand * 0.22, 12));
   const sz = r * 2;
+
+  // Zipper rendering from fitting positions
+  let zipperSvg = '';
+  if (inner) {
+    const zipperFittings = resolvedFittings.filter(f => f.type === 'zipper');
+    if (zipperFittings.length > 0) {
+      const zipW = 5;
+      const bandW = Math.max(4, (10 * scale - zipW) / 2);
+      zipperSvg += `\n  <defs><clipPath id="zip-clip"><path d="${inner}"/></clipPath></defs>`;
+      for (const f of zipperFittings) {
+        const zx = ix + f.posNorm * iw;
+        zipperSvg += `\n  <g clip-path="url(#zip-clip)">`;
+        zipperSvg += `\n    <rect x="${(zx - bandW - zipW / 2).toFixed(2)}" y="${voy}" width="${bandW.toFixed(2)}" height="${visH}" fill="${frameFill}"/>`;
+        zipperSvg += `\n    <rect x="${(zx - zipW / 2).toFixed(2)}" y="${voy}" width="${zipW}" height="${visH}" fill="#111"/>`;
+        zipperSvg += `\n    <rect x="${(zx + zipW / 2).toFixed(2)}" y="${voy}" width="${bandW.toFixed(2)}" height="${visH}" fill="${frameFill}"/>`;
+        zipperSvg += `\n  </g>`;
+      }
+    }
+  }
 
   // Render fitting icons as SVG string
   let fittingSvg = '';
   for (const f of resolvedFittings) {
+    if (f.type === 'zipper') continue;
     if (f.type === 'remen' && shape !== 'rect' && shape !== 'square') continue;
     const pos = fittingPx(f.side, f.posNorm, vox, voy, visW, visH, ix, iy, iw, ih, autoBandPx, shape);
     if (!pos) continue;
     const { cx, cy } = pos;
 
     if (f.type === 'remen') {
-      const L      = remenLength > 0 ? remenLength * scale : Math.min(ih * 0.48, 108);
-      const Wimg   = remenWidth  > 0 ? remenWidth  * scale : L / 7;
+      const ih_cm  = ih / scale;
+      const L_cm   = remenLength > 0 ? remenLength : Math.min(ih_cm * 0.48, 50);
+      const W_cm   = remenWidth  > 0 ? remenWidth  : L_cm / 7;
+      const L      = L_cm * scale;
+      const Wimg   = W_cm * scale;
       const isVR   = f.side === 'left' || f.side === 'right';
       const strapY = isVR ? cy : iy;
       const tf     = `translate(${cx},${strapY + L / 2}) rotate(90) translate(${-L / 2},${-Wimg / 2})`;
@@ -395,23 +477,7 @@ export function buildWindowSvg({
   <text x="${ix + 4}" y="${iy + ih - 6}" font-size="9" fill="#94a3b8" font-family="Arial,sans-serif">Чертёж создан в программе ОКНО CRM</text>`;
 
   const rulers = buildFittingRulers(resolvedFittings, vox, voy, visW, visH, scale);
-
-  // Zipper (молния) — same logic as FittingsInteractive in WindowVisualizer
-  let zipperSvg = '';
-  if (opening.includes('молни') && inner) {
-    const isTwo = opening.startsWith('2 молнии');
-    const bandW = Math.max(4, Math.round((ix - vox) * 0.55));
-    const zipW  = 5;
-    const zxArr = isTwo ? [ix + iw * 0.33, ix + iw * 0.67] : [ix + iw / 2];
-    zipperSvg += `\n  <defs><clipPath id="zip-clip"><path d="${inner}"/></clipPath></defs>`;
-    for (const zx of zxArr) {
-      zipperSvg += `\n  <g clip-path="url(#zip-clip)">`;
-      zipperSvg += `\n    <rect x="${(zx - bandW - zipW / 2).toFixed(2)}" y="${voy}" width="${bandW.toFixed(2)}" height="${visH}" fill="${frameFill}"/>`;
-      zipperSvg += `\n    <rect x="${(zx - zipW / 2).toFixed(2)}" y="${voy}" width="${zipW}" height="${visH}" fill="#111"/>`;
-      zipperSvg += `\n    <rect x="${(zx + zipW / 2).toFixed(2)}" y="${voy}" width="${bandW.toFixed(2)}" height="${visH}" fill="${frameFill}"/>`;
-      zipperSvg += `\n  </g>`;
-    }
-  }
+  const zipperRulers = buildZipperRulers(resolvedFittings, ix, iy, iw, ih, scale, vox);
 
   const totalW = DM + visW + 150;
   const totalH = DM + visH + 90;
@@ -422,6 +488,7 @@ export function buildWindowSvg({
   ${inner ? `<path d="${inner}" fill="${glassHex}"/>` : ''}
   ${zipperSvg}
   ${fittingSvg}
+  ${zipperRulers}
   ${rulers}
   ${annotations}
 </svg>`;

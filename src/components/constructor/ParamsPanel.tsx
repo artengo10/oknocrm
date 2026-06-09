@@ -162,7 +162,7 @@ function Step1({ store, setField, setProdType }: any) {
           {SHAPE_OPTIONS[store.prodType as ProdType].map((sh: ShapeType) => {
             const active = store.shape === sh;
             return (
-              <button key={sh} type="button" onClick={() => setField('shape', sh as ShapeType)}
+              <button key={sh} type="button" onClick={() => { setField('shape', sh as ShapeType); store.resetFittings(); }}
                 className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${
                   active
                     ? 'border-[#2563eb] bg-[#eff6ff] dark:bg-blue-900/20'
@@ -234,7 +234,6 @@ function Step2({ store, setField }: any) {
 function Step3({ store, setField }: any) {
   const materials: { value: Material; label: string; desc: string }[] = [
     { value: 'pvc',    label: 'ПВХ',     desc: 'Прозрачный' },
-    { value: 'screen', label: 'Сетка',   desc: 'Москитная' },
     { value: 'oxford', label: 'Оксфорд', desc: 'Непрозрачный' },
     { value: 'fabric', label: 'Ткань',   desc: 'Тканевая' },
   ];
@@ -296,54 +295,56 @@ function Step3({ store, setField }: any) {
   );
 }
 
-const LOCK_OPTIONS: Record<ProdType, { value: string; label: string; img: string; desc: string }[]> = {
-  window: [
-    { value: 'Поворотные скобы (пластик)',  label: 'Люверсы',           img: luversSrc, desc: 'Крепление по периметру' },
-    { value: 'Французский замок (металл)',  label: 'Французский замок', img: franSrc,   desc: 'Металлический замок'    },
-  ],
-  door: [
-    { value: '1 молния(спираль) по центру + люверсы 10 мм', label: 'Люверсы',           img: luversSrc, desc: '1 молния + люверсы' },
-    { value: '2 молнии(спираль) + люверсы 10 мм',           label: 'Французский замок', img: franSrc,   desc: '2 молнии + люверсы' },
-  ],
-};
+const LOCK_OPTIONS: { value: string; label: string; img: string; desc: string }[] = [
+  { value: 'Поворотные скобы (пластик)', label: 'Люверсы',           img: luversSrc, desc: 'Крепление по периметру' },
+  { value: 'Французский замок (металл)', label: 'Французский замок', img: franSrc,   desc: 'Металлический замок'    },
+];
 
 function Step4({ store, setField }: any) {
-  const [linkedOk, setLinkedOk] = useState(true);
-  const [linkedLuv, setLinkedLuv] = useState(true);
-  const options = LOCK_OPTIONS[store.prodType as ProdType];
+  const [linkedOk, setLinkedOk] = useState(false);
+  const [linkedLuv, setLinkedLuv] = useState(false);
 
-  const isWindow  = store.prodType === 'window';
-  const hasZipper = store.openingType.includes('молни');
+  const hasZipper  = store.openingType.includes('молни');
+  const zipperCountMatch = store.openingType.match(/^(\d+) молни/);
+  const zipperCount = zipperCountMatch ? parseInt(zipperCountMatch[1]) : 1;
 
-  // Базовый тип замка для окна (без учёта молнии)
-  const baseType: string = isWindow
-    ? (store.openingType.includes('замок') || store.openingType === 'Французский замок (металл)'
-        ? 'Французский замок (металл)'
-        : 'Поворотные скобы (пластик)')
-    : store.openingType;
+  // Базовый тип замка (без учёта молнии) — одинаково для окна и двери
+  const baseType: string = store.openingType.includes('замок') || store.openingType === 'Французский замок (металл)'
+    ? 'Французский замок (металл)'
+    : 'Поворотные скобы (пластик)';
 
   function setWindowBaseType(val: string) {
     if (!hasZipper) {
-      setField('openingType', val);
+      store.setField('openingType', val);
     } else {
-      setField('openingType',
+      const zipPrefix = store.openingType.match(/^\d+ молни[яи]\(спираль\)/)?.[0] ?? '1 молния(спираль)';
+      store.setField('openingType',
         val === 'Французский замок (металл)'
-          ? '1 молния(спираль) + французский замок (низ)'
-          : '1 молния(спираль) + поворотная скоба (низ)'
+          ? `${zipPrefix} + французский замок (низ)`
+          : `${zipPrefix} + поворотная скоба (низ)`
       );
     }
+    store.resetFittings();
   }
 
   function toggleWindowZipper(v: boolean) {
     if (v) {
-      setField('openingType',
+      store.setField('openingType',
         baseType === 'Французский замок (металл)'
           ? '1 молния(спираль) + французский замок (низ)'
           : '1 молния(спираль) + поворотная скоба (низ)'
       );
     } else {
-      setField('openingType', baseType);
+      store.setField('openingType', baseType);
     }
+    store.resetFittings();
+  }
+
+  function setZipperCount(n: number) {
+    const suffix = store.openingType.replace(/^\d+ молни[яи]\(спираль\)/, '');
+    const prefix = n === 1 ? '1 молния(спираль)' : `${n} молнии(спираль)`;
+    store.setField('openingType', prefix + suffix);
+    store.resetFittings();
   }
 
   function setOkantovka(side: 'Top' | 'Bottom' | 'Left' | 'Right', val: string) {
@@ -354,6 +355,7 @@ function Step4({ store, setField }: any) {
     } else {
       setField(`okantovka${side}` as 'okantovkaTop', n);
     }
+    store.resetFittings();
   }
 
   function setLuverSpacing(side: 'Top' | 'Bottom' | 'Left' | 'Right', val: string) {
@@ -367,20 +369,32 @@ function Step4({ store, setField }: any) {
     }
     store.resetFittings();
   }
+  // Auto strap dimensions — computed in cm (scale-independent, matches PDF/SVG output)
+  const autoRemen = (() => {
+    const okT = (store.okantovkaTop    ?? 70) / 10;
+    const okB = (store.okantovkaBottom ?? 70) / 10;
+    const ih_cm = Math.max(0, store.height - okT - okB);
+    const L_cm = Math.min(ih_cm * 0.48, 50);
+    return {
+      length: Math.round(L_cm * 10) / 10,
+      width:  Math.round(L_cm / 7 * 10) / 10,
+    };
+  })();
+
   return (
     <div className="flex flex-col gap-5 px-4 py-4">
       <div>
         <SectionTitle>Подвязочный ремень (см)</SectionTitle>
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <p className="text-[10px] text-[#94a3b8] dark:text-slate-500 mb-1">Длина&nbsp;<span className="text-[#cbd5e1] dark:text-slate-600">(0 = авто)</span></p>
-            <input type="number" value={store.remenLength} min={0} max={300} step={1}
+            <p className="text-[10px] text-[#94a3b8] dark:text-slate-500 mb-1">Длина</p>
+            <input type="number" value={store.remenLength || ''} placeholder={String(autoRemen.length)} min={0} max={300} step={1}
               onChange={(e) => setField('remenLength', Math.max(0, parseFloat(e.target.value) || 0))}
               className={inputCls} />
           </div>
           <div>
-            <p className="text-[10px] text-[#94a3b8] dark:text-slate-500 mb-1">Ширина&nbsp;<span className="text-[#cbd5e1] dark:text-slate-600">(0 = авто)</span></p>
-            <input type="number" value={store.remenWidth} min={0} max={50} step={0.5}
+            <p className="text-[10px] text-[#94a3b8] dark:text-slate-500 mb-1">Ширина</p>
+            <input type="number" value={store.remenWidth || ''} placeholder={String(autoRemen.width)} min={0} max={50} step={0.5}
               onChange={(e) => setField('remenWidth', Math.max(0, parseFloat(e.target.value) || 0))}
               className={inputCls} />
           </div>
@@ -389,13 +403,13 @@ function Step4({ store, setField }: any) {
       <div>
         <SectionTitle>Замки</SectionTitle>
         <div className="grid grid-cols-2 gap-3">
-          {options.map((opt) => {
-            const active = isWindow ? baseType === opt.value : store.openingType === opt.value;
+          {LOCK_OPTIONS.map((opt) => {
+            const active = baseType === opt.value;
             return (
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => isWindow ? setWindowBaseType(opt.value) : setField('openingType', opt.value)}
+                onClick={() => setWindowBaseType(opt.value)}
                 className={`flex flex-col items-center gap-2.5 p-4 rounded-xl border-2 transition-all ${
                   active
                     ? 'border-[#2563eb] bg-[#eff6ff] dark:bg-blue-900/20'
@@ -465,8 +479,23 @@ function Step4({ store, setField }: any) {
       <div>
         <SectionTitle>Опции</SectionTitle>
         <Toggle checked={store.install} onChange={(v) => setField('install', v)} label="Монтаж" />
-        {isWindow && (
-          <Toggle checked={hasZipper} onChange={toggleWindowZipper} label="Добавить молнию" />
+        <Toggle checked={hasZipper} onChange={toggleWindowZipper} label="Добавить молнию" />
+        {hasZipper && (
+          <div className="flex items-center gap-3 mt-1 mb-1 pl-1">
+            <span className="text-xs text-[#64748b] dark:text-slate-400">Молний:</span>
+            <div className="flex rounded-lg border border-[#e2e8f0] dark:border-slate-600 overflow-hidden">
+              {[1, 2, 3, 4, 5].map(n => (
+                <button key={n} type="button" onClick={() => setZipperCount(n)}
+                  className={`px-3 py-1 text-xs font-semibold transition-colors ${
+                    zipperCount === n
+                      ? 'bg-[#2563eb] text-white'
+                      : 'bg-white dark:bg-slate-800 text-[#64748b] dark:text-slate-400 hover:bg-[#f1f5f9] dark:hover:bg-slate-700'
+                  }`}>
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>

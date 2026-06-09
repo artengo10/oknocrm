@@ -19,7 +19,7 @@ export const SHAPE_OPTIONS: Record<ProdType, ShapeType[]> = {
 
 // ─── fitting types ────────────────────────────────────────────────────────────
 
-export type FittingType = 'luvers' | 'fran' | 'remen';
+export type FittingType = 'luvers' | 'fran' | 'remen' | 'zipper';
 export type FittingSide = 'top' | 'bottom' | 'left' | 'right';
 
 export interface FittingItem {
@@ -76,12 +76,38 @@ function buildFittings(
     items.push({ id: 'remen-1', side: 'top', posNorm: 0.67, type: 'remen' });
   }
 
+  if (openingType.includes('молни')) {
+    const m = openingType.match(/^(\d+) молни/);
+    const count = m ? Math.max(1, Math.min(5, parseInt(m[1]))) : 1;
+    for (let i = 0; i < count; i++) {
+      items.push({ id: `zipper-${i}`, side: 'top', posNorm: (i + 1) / (count + 1), type: 'zipper' });
+    }
+  }
+
   return items;
+}
+
+// Preserve zipper/remen positions from old fittings when rebuilding
+function preservePositions(newItems: FittingItem[], oldFittings: FittingItem[]): FittingItem[] {
+  const oldByType: Partial<Record<FittingType, FittingItem[]>> = {};
+  for (const f of oldFittings) {
+    if (f.type === 'zipper' || f.type === 'remen') {
+      (oldByType[f.type] ??= []).push(f);
+    }
+  }
+  const counters: Partial<Record<FittingType, number>> = {};
+  return newItems.map(f => {
+    if (f.type !== 'zipper' && f.type !== 'remen') return f;
+    const idx = counters[f.type] ?? 0;
+    counters[f.type] = idx + 1;
+    const old = oldByType[f.type]?.[idx];
+    return old ? { ...f, posNorm: old.posNorm } : f;
+  });
 }
 
 // ─── store interface ──────────────────────────────────────────────────────────
 
-type FnKeys = 'setField' | 'toCalcInput' | 'generateFittings' | 'cycleFitting' | 'addFitting' | 'resetFittings' | 'undoFitting' | 'redoFitting' | 'moveFitting' | 'removeFitting';
+type FnKeys = { [K in keyof ConstructorState]: ConstructorState[K] extends (...args: never[]) => unknown ? K : never }[keyof ConstructorState];
 
 interface ConstructorState {
   prodType: ProdType;
@@ -167,13 +193,14 @@ export const useConstructorStore = create<ConstructorState>((set, get) => ({
 
   generateFittings: () => {
     const s = get();
-    const items = buildFittings(
+    const newItems = buildFittings(
       s.width, s.height,
       s.okantovkaTop, s.okantovkaBottom, s.okantovkaLeft, s.okantovkaRight,
       s.luverSpacingTop, s.luverSpacingBottom, s.luverSpacingLeft, s.luverSpacingRight,
       s.openingType, s.shape,
     );
-    set({ fittings: items, fittingsHistory: [], fittingsRedoStack: [], fittingsCustomized: false });
+    const items = preservePositions(newItems, s.fittings);
+    set({ fittings: items, fittingsCustomized: false });
   },
 
   cycleFitting: (id: string) => {
@@ -230,13 +257,15 @@ export const useConstructorStore = create<ConstructorState>((set, get) => ({
 
   resetFittings: () => {
     const s = get();
-    const items = buildFittings(
+    const newItems = buildFittings(
       s.width, s.height,
       s.okantovkaTop, s.okantovkaBottom, s.okantovkaLeft, s.okantovkaRight,
       s.luverSpacingTop, s.luverSpacingBottom, s.luverSpacingLeft, s.luverSpacingRight,
       s.openingType, s.shape,
     );
-    set({ fittings: items, fittingsHistory: [], fittingsRedoStack: [], fittingsCustomized: false });
+    const items = preservePositions(newItems, s.fittings);
+    // Keep history — param changes don't wipe the undo stack
+    set({ fittings: items, fittingsCustomized: false });
   },
 
   moveFitting: (id, posNorm) => {
